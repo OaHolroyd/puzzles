@@ -2,6 +2,8 @@
 
 #include <stdio.h>
 
+#include <notcurses/notcurses.h>
+
 
 /* ========================================================================== */
 /*   FUNCTION DEFINITIONS                                                     */
