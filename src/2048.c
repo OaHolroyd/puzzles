@@ -4,7 +4,7 @@
 
 
 int main(int argc, char const *argv[]) {
-  fprintf(stderr, "%s\n", argv[0]);
+  fprintf(stderr, "filename: %s\n", argv[0]);
 
   test_func(2048);
 

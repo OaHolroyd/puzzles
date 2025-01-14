@@ -11,3 +11,7 @@
 void test_func(int i) {
   fprintf(stderr, "test_func: %d\n", i);
 }
+
+int returns_one(void) {
+  return 1;
+}

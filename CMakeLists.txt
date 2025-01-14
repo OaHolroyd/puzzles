@@ -25,11 +25,15 @@ file(GLOB_RECURSE SRC_CORE src/core/*.c)
 
 # Define individual puzzle executables
 file(GLOB SRC_PUZZLES src/*.c)
-foreach(puzzle_file ${SRC_PUZZLES})
+foreach (puzzle_file ${SRC_PUZZLES})
     # get puzzle name by removing file extension and directory path
     get_filename_component(puzzle_name ${puzzle_file} NAME_WE)
 
     add_executable(${puzzle_name} ${puzzle_file})
-    target_sources(${puzzle_name} PRIVATE ${SRC_CORE})
+    target_sources(${puzzle_name} PUBLIC ${SRC_CORE})
     target_link_libraries(${puzzle_name} PUBLIC Notcurses)
-endforeach()
+endforeach ()
+
+# Set up testing
+enable_testing()
+add_subdirectory(tests)

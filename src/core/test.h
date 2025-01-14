@@ -2,8 +2,9 @@
 #define TEST_H
 
 
-/* test function */
+/* test functions */
 void test_func(int i);
 
+int returns_one(void);
 
 #endif
