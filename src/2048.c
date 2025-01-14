@@ -1,8 +1,9 @@
 #include <stdio.h>
+#include <unistd.h>
 
 #include <notcurses/notcurses.h>
 
-#include "core/test.h"
+#include "core/logging.h"
 
 
 /**
@@ -36,9 +37,8 @@ ncscale_e get_scale(ncblitter_e blitter) {
 
 
 int main(int argc, char const *argv[]) {
-  fprintf(stderr, "filename: %s\n", argv[0]);
-
-  test_func(2048);
+  /* set up logging */
+  log_start("2048.log");
 
   /* start notcurses */
   notcurses_options opts = {
@@ -70,7 +70,16 @@ int main(int argc, char const *argv[]) {
   /* render the screen */
   notcurses_render(nc);
 
-  // TODO: play the game
+  /* game loop */
+  ncinput input = {0};
+  while (1) {
+    uint32_t id = notcurses_get_blocking(nc, &input);
+    LOG("KEY PRESSED: %d [%c]", id, id);
+
+    if (id == NCKEY_ESC) {
+      break;
+    }
+  }
 
   // TODO: destroy any created planes
 
