@@ -131,7 +131,7 @@ int ui_setup(struct notcurses *nc, struct UI *ui) {
     opts.x = 1 + CELL_WIDTH * SIZE + 1;
     opts.rows = 7;
     opts.cols = 9; // this is the max score width + 2 (7 + 2)
-  } else if (rows >= 1 + CELL_WIDTH * SIZE + 4) {
+  } else if (rows >= 1 + CELL_HEIGHT * SIZE + 4) {
     ui->alignment = 1;
     opts.y = 1 + CELL_HEIGHT * SIZE + 1;
     opts.x = 0;
