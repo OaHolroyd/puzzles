@@ -8,14 +8,20 @@
 #include "core/2048_core.h"
 
 
+#define CELL_WIDTH (6)
+#define CELL_HEIGHT (3)
+
+
 /**
  * User interface wrapper struct.
  */
 struct UI {
   struct notcurses *nc;
   struct ncplane *pln_std;
-  struct ncplane *pln_board;
-  struct ncplane *grid[SIZE * SIZE];
+  struct ncplane *pln_board; // container for the grid
+  struct ncplane *grid[SIZE * SIZE]; // grid of cells
+  int alignment; // 0 = horizontal, 1 = vertical
+  struct ncplane *pln_info; // info plane
 };
 
 
@@ -159,16 +165,12 @@ int set_up_ui(struct notcurses *nc, struct UI *ui) {
   unsigned int rows, cols;
   ncplane_dim_yx(ui->pln_std, &rows, &cols);
 
-  /* cell setup */
-  const int cell_width = 6;
-  const int cell_height = 3;
-
   /* create the game board */
   struct ncplane_options opts = {
-    .y = 2,
-    .x = 2,
-    .rows = cell_height * SIZE,
-    .cols = cell_width * SIZE,
+    .y = 1,
+    .x = 1,
+    .rows = CELL_HEIGHT * SIZE,
+    .cols = CELL_WIDTH * SIZE,
   };
   ui->pln_board = ncplane_create(ui->pln_std, &opts);
   if (!ui->pln_board) {
@@ -176,12 +178,42 @@ int set_up_ui(struct notcurses *nc, struct UI *ui) {
     return 1;
   }
 
-  /* add a grid over the top */
-  int err = ncgrid(ui->pln_board, ui->grid, SIZE, SIZE, cell_width, cell_height);
-  if (err) {
+  /* decide on horizontal or vertical alignment for the info pane (prefer horizontal) */
+  if (cols >= 1 + CELL_WIDTH * SIZE + 9) {
+    ui->alignment = 0;
+    opts.y = 1;
+    opts.x = 1 + CELL_WIDTH * SIZE + 1;
+    opts.rows = 7;
+    opts.cols = 9; // TODO: if SIZE is not 4 then this might be larger (or smaller)
+  } else if (rows >= 1 + CELL_WIDTH * SIZE + 4) {
+    ui->alignment = 1;
+    opts.y = 1 + CELL_HEIGHT * SIZE + 1;
+    opts.x = 1;
+    opts.rows = 4;
+    opts.cols = 16; // TODO: if SIZE is not 4 then this might be larger (or smaller)
+  } else {
+    // terminal isn't large enough
     ncplane_destroy(ui->pln_board);
     ui->pln_board = NULL;
     return 2;
+  }
+
+  /* set up the pane */
+  ui->pln_info = ncplane_create(ui->pln_std, &opts);
+  if (!ui->pln_info) {
+    LOG("ERROR: failed to create info plane\n");
+    ncplane_destroy(ui->pln_board);
+    ui->pln_board = NULL;
+    return 3;
+  }
+
+  /* add a grid over the top */
+  int err = ncgrid(ui->pln_board, ui->grid, SIZE, SIZE, CELL_WIDTH, CELL_HEIGHT);
+  if (err) {
+    ncplane_destroy(ui->pln_board);
+    ncplane_destroy(ui->pln_info);
+    ui->pln_board = NULL;
+    return 4;
   }
 
   return 0;
@@ -195,7 +227,7 @@ int set_up_ui(struct notcurses *nc, struct UI *ui) {
  * @param game The game state.
  */
 void render_ui(struct UI *ui, struct Game *game) {
-  /* set the color of the grid cells according to their number */
+  /* set the color and text of the grid cells */
   for (int i = 0; i < SIZE; i++) {
     for (int j = 0; j < SIZE; j++) {
       struct ncplane *cell = ui->grid[i * SIZE + j];
@@ -219,10 +251,42 @@ void render_ui(struct UI *ui, struct Game *game) {
         }
       }
 
-      /* set the text */
-      char text[16];
-      snprintf(text, 16, "%d", value);
-      ncplane_putstr_aligned(cell, 1, NCALIGN_CENTER, text);
+      /* set the text for non-zero cells */
+      if (value != 0) {
+        char text[CELL_WIDTH];
+        snprintf(text, CELL_WIDTH, "%d", 1 << value);
+        ncplane_putstr_aligned(cell, 1, NCALIGN_CENTER, text);
+      }
+    }
+  }
+
+  /* update the info */
+  ncplane_erase(ui->pln_info);
+  ncplane_perimiter(ui->pln_info, NCBOXROUND);
+
+  if (ui->alignment == 0) {
+    ncplane_putstr_yx(ui->pln_info, 1, 1, "score");
+    ncplane_printf_yx(ui->pln_info, 2, 1, "%d", game->score);
+
+    ncplane_putstr_yx(ui->pln_info, 4, 1, "turn");
+    ncplane_printf_yx(ui->pln_info, 5, 1, "%d", game->turn);
+  } else {
+    ncplane_putstr_yx(ui->pln_info, 1, 1, "score");
+    ncplane_printf_yx(ui->pln_info, 2, 1, "%d", game->score);
+
+    // TODO: if SIZE is not 4 then the x-offset might be larger (or smaller)
+    ncplane_putstr_yx(ui->pln_info, 1, 9, "turn");
+    ncplane_printf_yx(ui->pln_info, 2, 9, "%d", game->turn);
+  }
+
+  /* if no more moves are possible, also display a GAME OVER message */
+  if (game->status != PLAYING) {
+    if (ui->alignment == 0) {
+      ncplane_putstr_yx(ui->pln_std, 9, SIZE * CELL_WIDTH + 2, "RETURN");
+      ncplane_putstr_yx(ui->pln_std, 10, SIZE * CELL_WIDTH + 2, "TO RESET");
+    } else {
+      ncplane_putstr_yx(ui->pln_std, SIZE * CELL_HEIGHT + 3, 18, "RETURN");
+      ncplane_putstr_yx(ui->pln_std, SIZE * CELL_HEIGHT + 4, 18, "TO RESET");
     }
   }
 
@@ -294,7 +358,7 @@ int main(int argc, char const *argv[]) {
         break;
       case NCKEY_UP:
         result = game_move(&game, DOWN);
-      break;
+        break;
       case NCKEY_LEFT:
         result = game_move(&game, LEFT);
         break;

@@ -22,36 +22,36 @@ int movemerge(struct Game *game, Move move) {
   switch (move) {
     case DOWN:
       i0 = 0;
-      i1 = 3;
+      i1 = SIZE - 1;
       di = 1; // bottom to top
       j0 = 0;
-      j1 = 4;
+      j1 = SIZE;
       dj = 1; // left to right
       d = SIZE; // next row
       break;
     case LEFT:
       i0 = 0;
-      i1 = 4;
+      i1 = SIZE;
       di = 1; // bottom to top
       j0 = 0;
-      j1 = 3;
+      j1 = SIZE - 1;
       dj = 1; // left to right
       d = 1; // next column
       break;
     case UP:
-      i0 = 3;
+      i0 = SIZE - 1;
       i1 = 0;
       di = -1; // top to bottom
-      j0 = 3;
+      j0 = SIZE - 1;
       j1 = -1;
       dj = -1; // right to left
       d = -SIZE; // previous row
       break;
     case RIGHT:
-      i0 = 3;
+      i0 = SIZE - 1;
       i1 = -1;
       di = -1; // top to bottom
-      j0 = 3;
+      j0 = SIZE - 1;
       j1 = 0;
       dj = -1; // right to left
       d = -1; // previous column
@@ -138,8 +138,8 @@ void set_status(struct Game *game) {
   }
 
   /* check up/down matches */
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 4; j++) {
+  for (int i = 0; i < SIZE - 1; i++) {
+    for (int j = 0; j < SIZE; j++) {
       int *cell = game->grid + j + SIZE * i;
       if (*cell == *(cell + SIZE)) {
         game->status = PLAYING;
@@ -149,8 +149,8 @@ void set_status(struct Game *game) {
   } // i end
 
   /* check left/right matches */
-  for (int i = 0; i < 4; i++) {
-    for (int j = 0; j < 3; j++) {
+  for (int i = 0; i < SIZE; i++) {
+    for (int j = 0; j < SIZE - 1; j++) {
       int *cell = game->grid + j + SIZE * i;
       if (*cell == *(cell + 1)) {
         game->status = PLAYING;
@@ -165,6 +165,7 @@ void set_status(struct Game *game) {
 
 void game_reset(struct Game *game) {
   game->score = 0;
+  game->turn = 0;
   game->status = PLAYING;
 
   /* clear the grid */
@@ -178,12 +179,11 @@ void game_reset(struct Game *game) {
 
 
 Result game_move(struct Game *game, Move move) {
-  int total_cycles = 0;
-  int has_moved = 0;
-
   memset(game->merge, 0, SIZE*SIZE*sizeof(game->merge[0])); // reset merge info
 
   /* move/merge until no more moves/merges are possible */
+  int total_cycles = 0;
+  int has_moved;
   do {
     has_moved = movemerge(game, move);
     total_cycles += has_moved;
