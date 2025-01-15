@@ -26,36 +26,6 @@ struct UI {
 
 
 /**
- * Get the best blitter available for the terminal.
- *
- * @param nc The notcurses context.
- * @return The best blitter.
- */
-ncblitter_e get_blitter(struct notcurses *nc) {
-  if (notcurses_canpixel(nc)) {
-    // pixels are the best option
-    return NCBLIT_PIXEL;
-  }
-
-  return NCBLIT_DEFAULT;
-}
-
-/**
- * Get the correct scaling option for a given blitter.
- *
- * @param blitter The blitter to use.
- * @return The best scaling option.
- */
-ncscale_e get_scale(ncblitter_e blitter) {
-  if (blitter == NCBLIT_PIXEL) {
-    return NCSCALE_SCALE_HIRES;
-  }
-
-  return NCSCALE_NONE;
-}
-
-
-/**
  * Draw a line in the outermost cells of a plane.
  *
  * @param ncp The plane to draw on.
@@ -105,7 +75,7 @@ void ncplane_perimiter(struct ncplane *ncp, const char *gclusters) {
  * @param height The height of each grid cell.
  * @return 0 on success, non-zero on failure.
  */
-int ncgrid(struct ncplane *ncp, struct ncplane *grid[SIZE * SIZE], int rows, int cols, int width, int height) {
+int nc_grid(struct ncplane *ncp, struct ncplane *grid[SIZE * SIZE], int rows, int cols, int width, int height) {
   /* check that the parent plane is large enough */
   unsigned int p_rows, p_cols;
   ncplane_dim_yx(ncp, &p_rows, &p_cols);
@@ -208,7 +178,7 @@ int ui_setup(struct notcurses *nc, struct UI *ui) {
   }
 
   /* add a grid over the top */
-  int err = ncgrid(ui->pln_board, ui->grid, SIZE, SIZE, CELL_WIDTH, CELL_HEIGHT);
+  int err = nc_grid(ui->pln_board, ui->grid, SIZE, SIZE, CELL_WIDTH, CELL_HEIGHT);
   if (err) {
     ncplane_destroy(ui->pln_board);
     ncplane_destroy(ui->pln_info);
