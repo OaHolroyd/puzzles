@@ -2,8 +2,8 @@
 // Created by Oscar Holroyd on 15/01/2025.
 //
 
-#ifndef INC_2048_CORE_H
-#define INC_2048_CORE_H
+#ifndef GAME_2048_H
+#define GAME_2048_H
 
 #define SIZE (4) // size of the grid
 
@@ -70,4 +70,4 @@ void game_reset(struct Game *game);
 Result game_move(struct Game *game, Move move);
 
 
-#endif //INC_2048_CORE_H
+#endif //GAME_2048_H

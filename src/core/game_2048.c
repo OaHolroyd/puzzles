@@ -2,10 +2,12 @@
 // Created by Oscar Holroyd on 15/01/2025.
 //
 
-#include "2048_core.h"
+#include "game_2048.h"
 
 #include <stdlib.h>
 #include <string.h>
+
+#include "logging.h"
 
 /**
  * Perform a single move/merge step

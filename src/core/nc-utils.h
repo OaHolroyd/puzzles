@@ -26,4 +26,38 @@ ncblitter_e get_blitter(struct notcurses *nc);
 ncscale_e get_scale(ncblitter_e blitter);
 
 
+/**
+ * Draw a line in the outermost cells of a plane.
+ *
+ * @param ncp The plane to draw on.
+ * @param gclusters Six grapheme clusters to use, ul, ur, ll, lr, hl, vl
+ *        eg NCBOXLIGHT / "┌┐└┘─│".
+ *
+ */
+void ncutil_perimiter(struct ncplane *ncp, const char *gclusters);
+
+
+/**
+ * Fill a plane with a single character.
+ *
+ * @param ncp The plane to fill.
+ * @param ch The character to fill with.
+ */
+void ncutil_fill(struct ncplane *ncp, char ch);
+
+
+/**
+ * Create a grid of cells inside a plane.
+ *
+ * @param ncp The parent plane containing the grid.
+ * @param grid The grid of cells to draw.
+ * @param rows The number of rows in the grid.
+ * @param cols The number of columns in the grid.
+ * @param width The width of each grid cell.
+ * @param height The height of each grid cell.
+ * @return 0 on success, non-zero on failure.
+ */
+int ncutil_grid(struct ncplane *ncp, struct ncplane **grid, int rows, int cols, int width, int height);
+
+
 #endif //NC_UTILS_H
