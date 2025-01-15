@@ -156,7 +156,7 @@ int ncgrid(struct ncplane *ncp, struct ncplane *grid[SIZE * SIZE], int rows, int
  * @param ui The user interface to set up.
  * @return 0 on success, non-zero on failure.
  */
-int set_up_ui(struct notcurses *nc, struct UI *ui) {
+int ui_setup(struct notcurses *nc, struct UI *ui) {
   ui->nc = nc;
   ui->pln_std = notcurses_stdplane(nc);
   ui->pln_board = NULL;
@@ -221,12 +221,33 @@ int set_up_ui(struct notcurses *nc, struct UI *ui) {
 
 
 /**
+ * Free the memory used by the user interface.
+ *
+ * @param ui The user interface.
+ */
+void ui_destroy(struct UI *ui) {
+  for (int k = 0; k < SIZE * SIZE; k++) {
+    if (ui->grid[k]) {
+      ncplane_destroy(ui->grid[k]);
+      ui->grid[k] = NULL;
+    }
+  }
+
+  ncplane_destroy(ui->pln_board);
+  ui->pln_board = NULL;
+
+  ncplane_destroy(ui->pln_info);
+  ui->pln_info = NULL;
+}
+
+
+/**
  * Render the game board.
  *
  * @param ui The user interface.
  * @param game The game state.
  */
-void render_ui(struct UI *ui, struct Game *game) {
+void ui_render(struct UI *ui, struct Game *game) {
   /* set the color and text of the grid cells */
   for (int i = 0; i < SIZE; i++) {
     for (int j = 0; j < SIZE; j++) {
@@ -313,11 +334,6 @@ int main(int argc, char const *argv[]) {
   };
   struct notcurses *nc = notcurses_init(&opts, stdout);
 
-  /* check if images can be loaded */
-  int canopen_images = notcurses_canopen_images(nc);
-  ncblitter_e blitter = get_blitter(nc);
-  ncscale_e scale = get_scale(blitter);
-
   /* set up the screen */
   int err = notcurses_enter_alternate_screen(nc);
   if (err) {
@@ -327,7 +343,7 @@ int main(int argc, char const *argv[]) {
 
   /* create the game board */
   struct UI ui;
-  set_up_ui(nc, &ui);
+  ui_setup(nc, &ui);
   if (!ui.pln_board) {
     LOG("ERROR: failed to set up UI\n");
     notcurses_leave_alternate_screen(nc);
@@ -336,27 +352,29 @@ int main(int argc, char const *argv[]) {
   }
 
   /* render the screen before starting the game */
-  render_ui(&ui, &game);
+  ui_render(&ui, &game);
 
   /* game loop */
   ncinput input = {0};
+  uint32_t id_prev = 0;
   while (1) {
     uint32_t id = notcurses_get_blocking(nc, &input);
     LOG("KEY PRESSED: %d [%c]", id, id);
 
     /* special key handling */
-    if (id == NCKEY_ESC) {
+    if (id == 'q') {
       break;
     }
 
     /* handle keypress */
     Result result = MOVE_ERROR;
     switch (id) {
-      // NOTE: up and down are mirrored
       case NCKEY_DOWN:
+        // NOTE: up and down are mirrored
         result = game_move(&game, UP);
         break;
       case NCKEY_UP:
+        // NOTE: up and down are mirrored
         result = game_move(&game, DOWN);
         break;
       case NCKEY_LEFT:
@@ -365,19 +383,28 @@ int main(int argc, char const *argv[]) {
       case NCKEY_RIGHT:
         result = game_move(&game, RIGHT);
         break;
+      case NCKEY_ENTER:
+        // reset the game if enter is pressed twice or if game is over
+        if (id_prev == NCKEY_ENTER || game.status != PLAYING) {
+          game_reset(&game);
+          result = MOVE_SUCCESS;
+        }
+        break;
       default:
         // do nothing
         break;
     }
 
     /* render the screen if there were any updates */
-    if (result == MOVE_SUCCESS) {
-      render_ui(&ui, &game);
+    if (result != MOVE_ERROR) {
+      ui_render(&ui, &game);
     }
+
+    id_prev = id;
   }
 
-  // TODO: destroy any created planes
-
+  /* clean up resources */
+  ui_destroy(&ui);
   notcurses_leave_alternate_screen(nc);
   notcurses_stop(nc);
 
