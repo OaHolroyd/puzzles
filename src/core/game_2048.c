@@ -85,7 +85,7 @@ int movemerge(struct Game *game, Move move) {
       else if ((*cell == *(cell + d)) && (*mcell == 0) && (*(mcell + d) == 0)) {
         *cell += 1;
         *mcell = 1;
-        game->score += (1 << *cell);
+        game->score += (1 << *cell) * (*cell - 1);
         game->nz++;
 
         *(cell + d) = 0;
@@ -184,6 +184,7 @@ Result game_move(struct Game *game, Move move) {
   memset(game->merge, 0, SIZE*SIZE*sizeof(game->merge[0])); // reset merge info
 
   /* move/merge until no more moves/merges are possible */
+  // TODO: this does not work sometimes when the grid is full
   int total_cycles = 0;
   int has_moved;
   do {
