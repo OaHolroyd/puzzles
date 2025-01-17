@@ -7,7 +7,7 @@
 #include "logging.h"
 
 
-ncblitter_e get_blitter(struct notcurses *nc) {
+ncblitter_e get_blitter(const struct notcurses *nc) {
   if (notcurses_canpixel(nc)) {
     // pixels are the best option
     return NCBLIT_PIXEL;
@@ -17,7 +17,7 @@ ncblitter_e get_blitter(struct notcurses *nc) {
 }
 
 
-ncscale_e get_scale(ncblitter_e blitter) {
+ncscale_e get_scale(const ncblitter_e blitter) {
   if (blitter == NCBLIT_PIXEL) {
     return NCSCALE_SCALE_HIRES;
   }
@@ -27,7 +27,7 @@ ncscale_e get_scale(ncblitter_e blitter) {
 
 
 struct notcurses *ncu_start(void) {
-  notcurses_options opts = {
+  const notcurses_options opts = {
     .termtype = NULL,
     .loglevel = NCLOGLEVEL_SILENT,
     .margin_l = 0, .margin_r = 0,
@@ -42,8 +42,7 @@ struct notcurses *ncu_start(void) {
   }
 
   /* set up the screen */
-  int err = notcurses_enter_alternate_screen(nc);
-  if (err) {
+  if (notcurses_enter_alternate_screen(nc)) {
     LOG("ERROR: failed to enter alternate screen");
     notcurses_stop(nc);
     return NULL;
@@ -61,24 +60,23 @@ void ncu_end(struct notcurses *nc) {
 
 void ncutil_perimiter(struct ncplane *ncp, const char *gclusters) {
   /* define color/style etc */
-  unsigned ctlword = 0;
   uint32_t channels = 0;
   ncchannel_set_rgb8(&channels, 0x00, 0x00, 0x00);
-  uint16_t attr = NCSTYLE_NONE;
+  const uint16_t attr = NCSTYLE_NONE;
 
   /* define cells */
   nccell ul = NCCELL_TRIVIAL_INITIALIZER, ur = NCCELL_TRIVIAL_INITIALIZER;
   nccell ll = NCCELL_TRIVIAL_INITIALIZER, lr = NCCELL_TRIVIAL_INITIALIZER;
   nccell hl = NCCELL_TRIVIAL_INITIALIZER, vl = NCCELL_TRIVIAL_INITIALIZER;
 
-  int err = nccells_load_box(ncp, attr, channels, &ul, &ur, &ll, &lr, &hl, &vl, gclusters);
+  const int err = nccells_load_box(ncp, attr, channels, &ul, &ur, &ll, &lr, &hl, &vl, gclusters);
   if (err) {
     // fall back to ASCII
     nccells_ascii_box(ncp, attr, channels, &ul, &ur, &ll, &lr, &hl, &vl);
   }
 
   /* draw perimeter */
-  ncplane_perimeter(ncp, &ul, &ur, &ll, &lr, &hl, &vl, ctlword);
+  ncplane_perimeter(ncp, &ul, &ur, &ll, &lr, &hl, &vl, 0);
 
   /* drop cells */
   nccell_release(ncp, &ul);
@@ -90,7 +88,7 @@ void ncutil_perimiter(struct ncplane *ncp, const char *gclusters) {
 }
 
 
-void ncutil_fill(struct ncplane *ncp, char ch) {
+void ncutil_fill(struct ncplane *ncp, const char ch) {
   unsigned int rows, cols;
   ncplane_dim_yx(ncp, &rows, &cols);
 
@@ -102,7 +100,10 @@ void ncutil_fill(struct ncplane *ncp, char ch) {
 }
 
 
-int ncutil_grid(struct ncplane *ncp, struct ncplane **grid, int rows, int cols, int width, int height) {
+int ncutil_grid(
+  struct ncplane *ncp, struct ncplane **grid,
+  const int rows, const int cols, const int width, const int height
+) {
   /* check that the parent plane is large enough */
   unsigned int p_rows, p_cols;
   ncplane_dim_yx(ncp, &p_rows, &p_cols);

@@ -15,11 +15,11 @@
  * @param move The move to perform.
  * @return 0 if no move was made, 1 otherwise.
  */
-int movemerge(struct Game *game, Move move) {
+int movemerge(struct Game *game, const Move move) {
   int has_moved = 0;
 
   /* set up the loops depending on the move direction */
-  int i0, i1, j0, j1, di, dj, d;
+  int i0 = 0, i1 = 0, j0 = 0, j1 = 0, di = 0, dj = 0, d = 0;
   switch (move) {
     case UP:
       i0 = 0;
@@ -60,12 +60,10 @@ int movemerge(struct Game *game, Move move) {
   }
 
   /* move/merge cycle */
-  int *cell;
-  int *mcell;
   for (int i = i0; i != i1; i += di) {
     for (int j = j0; j != j1; j += dj) {
-      cell = game->grid + j + SIZE * i;
-      mcell = game->merge + j + SIZE * i;
+      int *cell = game->grid + j + SIZE * i;
+      int *mcell = game->merge + j + SIZE * i;
 
       /* empty space: move into it */
       if (*cell == 0) {
@@ -107,7 +105,6 @@ int movemerge(struct Game *game, Move move) {
  */
 int fill_random_cell(struct Game *game) {
   /* choose a random empty cell */
-  // TODO: using modulo is fast but slightly biased
   int n = rand() % game->nz;
   game->nz--;
 
@@ -141,7 +138,7 @@ void set_status(struct Game *game) {
   /* check up/down matches */
   for (int i = 0; i < SIZE - 1; i++) {
     for (int j = 0; j < SIZE; j++) {
-      int *cell = game->grid + j + SIZE * i;
+      const int *cell = game->grid + j + SIZE * i;
       if (*cell == *(cell + SIZE)) {
         game->status = PLAYING;
         return;
@@ -152,7 +149,7 @@ void set_status(struct Game *game) {
   /* check left/right matches */
   for (int i = 0; i < SIZE; i++) {
     for (int j = 0; j < SIZE - 1; j++) {
-      int *cell = game->grid + j + SIZE * i;
+      const int *cell = game->grid + j + SIZE * i;
       if (*cell == *(cell + 1)) {
         game->status = PLAYING;
         return;
@@ -179,11 +176,10 @@ void game_reset(struct Game *game) {
 }
 
 
-Result game_move(struct Game *game, Move move) {
+Result game_move(struct Game *game, const Move move) {
   memset(game->merge, 0, SIZE*SIZE*sizeof(game->merge[0])); // reset merge info
 
   /* move/merge until no more moves/merges are possible */
-  // TODO: this does not work sometimes when the grid is full
   int total_cycles = 0;
   int has_moved;
   do {
@@ -200,8 +196,8 @@ Result game_move(struct Game *game, Move move) {
 }
 
 
-Result game_turn(struct Game *game, Move move) {
-  Result result = game_move(game, move);
+Result game_turn(struct Game *game, const Move move) {
+  const Result result = game_move(game, move);
 
   if (result == MOVE_ERROR) {
     return result;
