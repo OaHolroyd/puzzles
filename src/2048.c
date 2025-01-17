@@ -247,18 +247,27 @@ void ui_render(struct UI *ui, struct Game *game) {
   /* update the info */
   ncutil_perimiter(ui->pln_info, NCBOXROUND);
 
-  if (ui->alignment == 0) {
-    ncplane_putstr_yx(ui->pln_info, 1, 1, "score");
-    ncplane_printf_yx(ui->pln_info, 2, 1, "%d", game->score);
+  // always say the score
+  ncplane_putstr_yx(ui->pln_info, 1, 1, "score");
+  ncplane_printf_yx(ui->pln_info, 2, 1, "%d", game->score);
 
-    ncplane_putstr_yx(ui->pln_info, 4, 1, "turn");
-    ncplane_printf_yx(ui->pln_info, 5, 1, "%d", game->turn);
+  // say the turn if the game is still going
+  if (game->status == PLAYING) {
+    if (ui->alignment == 1) {
+      ncplane_putstr_yx(ui->pln_info, 1, 9, "turn");
+      ncplane_printf_yx(ui->pln_info, 2, 9, "%d", game->turn);
+    } else {
+      ncplane_putstr_yx(ui->pln_info, 4, 1, "turn");
+      ncplane_printf_yx(ui->pln_info, 5, 1, "%d", game->turn);
+    }
   } else {
-    ncplane_putstr_yx(ui->pln_info, 1, 1, "score");
-    ncplane_printf_yx(ui->pln_info, 2, 1, "%d", game->score);
-
-    ncplane_putstr_yx(ui->pln_info, 1, 9, "turn");
-    ncplane_printf_yx(ui->pln_info, 2, 9, "%d", game->turn);
+    if (ui->alignment == 1) {
+      ncplane_putstr_yx(ui->pln_info, 1, 9, "GAME");
+      ncplane_putstr_yx(ui->pln_info, 2, 9, "OVER");
+    } else {
+      ncplane_putstr_yx(ui->pln_info, 4, 1, "GAME");
+      ncplane_putstr_yx(ui->pln_info, 5, 1, "OVER");
+    }
   }
 
   notcurses_render(ui->nc);

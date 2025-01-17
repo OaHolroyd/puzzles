@@ -133,6 +133,7 @@ void set_status(struct Game *game) {
   /* if there are any non-zero cells then there must be a possible move */
   if (game->nz) {
     game->status = PLAYING;
+    return;
   }
 
   /* check up/down matches */
