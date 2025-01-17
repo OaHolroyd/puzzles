@@ -7,9 +7,14 @@
 #if !DEBUG
 
 /* if not built in debug mode, just provide stubs that do nothing */
-void log_start(const char *file) {}
-void log_clear(void) {}
-void internal_log(const char *file, const int line, const char *format, ...) {}
+void log_start(const char *file) {
+}
+
+void log_clear(void) {
+}
+
+void internal_log(const char *file, const int line, const char *format, ...) {
+}
 
 #else
 
