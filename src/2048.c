@@ -278,19 +278,9 @@ int main(int argc, char const *argv[]) {
   game_reset(&game);
 
   /* start notcurses */
-  notcurses_options opts = {
-    .termtype = NULL,
-    .loglevel = NCLOGLEVEL_SILENT,
-    .margin_l = 0, .margin_r = 0,
-    .margin_t = 0, .margin_b = 0,
-    .flags = 0 // NCOPTION_SUPPRESS_BANNERS // to suppress info at end
-  };
-  struct notcurses *nc = notcurses_init(&opts, stdout);
-
-  /* set up the screen */
-  int err = notcurses_enter_alternate_screen(nc);
-  if (err) {
-    LOG("ERROR: failed to enter alternate screen");
+  struct notcurses *nc = ncu_start();
+  LOG("INFO: started notcurses");
+  if (nc == NULL) {
     return 1;
   }
 
@@ -311,7 +301,6 @@ int main(int argc, char const *argv[]) {
   ncinput input = {0};
   uint32_t id_prev = 0;
   while (1) {
-    LOG("INFO: new loop");
     uint32_t id = notcurses_get_blocking(nc, &input);
     LOG("INFO: key pressed: %d [%c]", id, id);
 
@@ -322,7 +311,6 @@ int main(int argc, char const *argv[]) {
 
     /* handle keypress */
     Result result = MOVE_ERROR;
-    LOG("INFO: start key handling");
     switch (id) {
       case NCKEY_DOWN:
         result = game_turn(&game, DOWN);
@@ -347,13 +335,10 @@ int main(int argc, char const *argv[]) {
         // do nothing
         break;
     }
-    LOG("INFO: end key handling");
 
     /* render the screen if there were any updates */
     if (result != MOVE_ERROR) {
-      LOG("INFO: start render");
       ui_render(&ui, &game);
-      LOG("INFO: end render");
     }
 
     id_prev = id;
@@ -361,8 +346,7 @@ int main(int argc, char const *argv[]) {
 
   /* clean up resources */
   ui_destroy(&ui);
-  notcurses_leave_alternate_screen(nc);
-  notcurses_stop(nc);
+  ncu_end(nc);
 
   return 0;
 }

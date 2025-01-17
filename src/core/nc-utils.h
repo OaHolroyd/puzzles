@@ -27,6 +27,22 @@ ncscale_e get_scale(ncblitter_e blitter);
 
 
 /**
+ * Start up the notcurses context.
+ *
+ * @return The notcurses handle.
+ */
+struct notcurses *ncu_start(void);
+
+
+/**
+ * Clean up the notcurses context.
+ *
+ * @param nc The notcurses handle.
+ */
+void ncu_end(struct notcurses *nc);
+
+
+/**
  * Draw a line in the outermost cells of a plane.
  *
  * @param ncp The plane to draw on.

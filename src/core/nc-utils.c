@@ -26,6 +26,39 @@ ncscale_e get_scale(ncblitter_e blitter) {
 }
 
 
+struct notcurses *ncu_start(void) {
+  notcurses_options opts = {
+    .termtype = NULL,
+    .loglevel = NCLOGLEVEL_SILENT,
+    .margin_l = 0, .margin_r = 0,
+    .margin_t = 0, .margin_b = 0,
+    .flags = 0 // NCOPTION_SUPPRESS_BANNERS // to suppress info at end
+  };
+  struct notcurses *nc = notcurses_init(&opts, stdout);
+  LOG("INFO: started notcurses");
+  if (!nc) {
+    LOG("ERROR: failed to start notcurses");
+    return NULL;
+  }
+
+  /* set up the screen */
+  int err = notcurses_enter_alternate_screen(nc);
+  if (err) {
+    LOG("ERROR: failed to enter alternate screen");
+    notcurses_stop(nc);
+    return NULL;
+  }
+
+  return nc;
+}
+
+
+void ncu_end(struct notcurses *nc) {
+  notcurses_leave_alternate_screen(nc);
+  notcurses_stop(nc);
+}
+
+
 void ncutil_perimiter(struct ncplane *ncp, const char *gclusters) {
   /* define color/style etc */
   unsigned ctlword = 0;
