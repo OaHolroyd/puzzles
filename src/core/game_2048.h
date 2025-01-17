@@ -70,4 +70,14 @@ void game_reset(struct Game *game);
 Result game_move(struct Game *game, Move move);
 
 
+/**
+ * Move the tiles in the given direction and add a new tile.
+ *
+ * @param game The game state.
+ * @param move The direction to move the tiles.
+ * @return The result of the move.
+ */
+Result game_turn(struct Game *game, Move move);
+
+
 #endif //GAME_2048_H

@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "logging.h"
 
 /**
  * Perform a single move/merge step
@@ -22,7 +21,7 @@ int movemerge(struct Game *game, Move move) {
   /* set up the loops depending on the move direction */
   int i0, i1, j0, j1, di, dj, d;
   switch (move) {
-    case DOWN:
+    case UP:
       i0 = 0;
       i1 = SIZE - 1;
       di = 1; // bottom to top
@@ -40,7 +39,7 @@ int movemerge(struct Game *game, Move move) {
       dj = 1; // left to right
       d = 1; // next column
       break;
-    case UP:
+    case DOWN:
       i0 = SIZE - 1;
       i1 = 0;
       di = -1; // top to bottom
@@ -197,6 +196,17 @@ Result game_move(struct Game *game, Move move) {
     return MOVE_ERROR;
   }
 
+  return MOVE_SUCCESS;
+}
+
+
+Result game_turn(struct Game *game, Move move) {
+  Result result = game_move(game, move);
+
+  if (result == MOVE_ERROR) {
+    return result;
+  }
+
   fill_random_cell(game);
   game->turn++;
 
@@ -206,5 +216,5 @@ Result game_move(struct Game *game, Move move) {
     return MOVE_GAMEOVER;
   }
 
-  return MOVE_SUCCESS;
+  return result;
 }

@@ -264,9 +264,7 @@ void ui_render(struct UI *ui, struct Game *game) {
     ncplane_printf_yx(ui->pln_info, 2, 9, "%d", game->turn);
   }
 
-  LOG("INFO: start notcurses render");
   notcurses_render(ui->nc);
-  LOG("INFO: end notcurses render");
 }
 
 
@@ -327,18 +325,16 @@ int main(int argc, char const *argv[]) {
     LOG("INFO: start key handling");
     switch (id) {
       case NCKEY_DOWN:
-        // NOTE: up and down are mirrored
-        result = game_move(&game, UP);
+        result = game_turn(&game, DOWN);
         break;
       case NCKEY_UP:
-        // NOTE: up and down are mirrored
-        result = game_move(&game, DOWN);
+        result = game_turn(&game, UP);
         break;
       case NCKEY_LEFT:
-        result = game_move(&game, LEFT);
+        result = game_turn(&game, LEFT);
         break;
       case NCKEY_RIGHT:
-        result = game_move(&game, RIGHT);
+        result = game_turn(&game, RIGHT);
         break;
       case NCKEY_ENTER:
         // reset the game if enter is pressed twice or if game is over
