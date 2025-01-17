@@ -19,7 +19,7 @@
 struct UI {
   struct notcurses *nc;
   struct ncplane *pln_std;
-  struct ncplane *pln_border;
+  struct ncplane *pln_border; // allows for a border around the board
   struct ncplane *pln_board; // container for the grid
   struct ncplane *grid[SIZE * SIZE]; // grid of cells
   int alignment; // 0 = horizontal, 1 = vertical
@@ -38,7 +38,7 @@ void set_cell_colors(struct ncplane *cell, int value) {
 
   /* define a color array so we can use value as an index */
   // NOTE: the first color is the background color, the second is the text color
-  uint32_t hex_colors[19][2] = {
+  const uint32_t hex_colors[19][2] = {
     // shades of grey up to 1024
     {0x000000, 0x000000}, // 0 (blank)
     {0x202020, 0xFFFFFF}, // 1 (2)
@@ -66,7 +66,7 @@ void set_cell_colors(struct ncplane *cell, int value) {
   };
 
   if (value < 0 || value > 17) {
-    value = 0;
+    value = 18;
   }
 
   ncplane_set_bchannel(cell, 0x40000000 + hex_colors[value][0]);
@@ -158,9 +158,6 @@ int ui_setup(struct notcurses *nc, struct UI *ui) {
     return 3;
   }
   LOG("INFO: created info plane");
-  // ncplane_set_bchannel(ui->pln_info, 0x40000000);
-  // ncplane_set_fchannel(ui->pln_info, 0x40FFFFFF);
-  // ncutil_fill(ui->pln_info, ' ');
 
   /* add a grid over the top */
   int err = ncutil_grid(ui->pln_board, ui->grid, SIZE, SIZE, CELL_WIDTH, CELL_HEIGHT);
@@ -299,19 +296,19 @@ int main(int argc, char const *argv[]) {
 
   /* game loop */
   ncinput input = {0};
-  uint32_t id_prev = 0;
   while (1) {
-    uint32_t id = notcurses_get_blocking(nc, &input);
-    LOG("INFO: key pressed: %d [%c]", id, id);
+    uint32_t key = notcurses_get_blocking(nc, &input);
+    LOG("INFO: key pressed: %d [%c, %s]", key, key, ncu_keystr(key));
 
     /* special key handling */
-    if (id == 'q' || id == 'Q') {
+    if (key == 'q' || key == 'Q') {
       break;
     }
 
     /* handle keypress */
     Result result = MOVE_ERROR;
-    switch (id) {
+    switch (key) {
+      // four move directions
       case NCKEY_DOWN:
         result = game_turn(&game, DOWN);
         break;
@@ -324,15 +321,14 @@ int main(int argc, char const *argv[]) {
       case NCKEY_RIGHT:
         result = game_turn(&game, RIGHT);
         break;
-      case NCKEY_ENTER:
-        // reset the game if enter is pressed twice or if game is over
-        if (id_prev == NCKEY_ENTER || game.status != PLAYING) {
-          game_reset(&game);
-          result = MOVE_SUCCESS;
-        }
+      // reset the game
+      case 'R':
+      case 'r':
+        game_reset(&game);
+        result = MOVE_SUCCESS; // force a render
         break;
       default:
-        // do nothing
+        // do nothing if key is not valid
         break;
     }
 
@@ -340,8 +336,6 @@ int main(int argc, char const *argv[]) {
     if (result != MOVE_ERROR) {
       ui_render(&ui, &game);
     }
-
-    id_prev = id;
   }
 
   /* clean up resources */

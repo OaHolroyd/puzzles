@@ -1,4 +1,5 @@
 .DS_Store
+build
 build-debug
 build-release
 .idea

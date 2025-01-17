@@ -14,7 +14,7 @@
  * @param nc The notcurses context.
  * @return The best blitter.
  */
-ncblitter_e get_blitter(struct notcurses *nc);
+ncblitter_e get_blitter(const struct notcurses *nc);
 
 
 /**
@@ -75,5 +75,13 @@ void ncutil_fill(struct ncplane *ncp, char ch);
  */
 int ncutil_grid(struct ncplane *ncp, struct ncplane **grid, int rows, int cols, int width, int height);
 
+
+/**
+ * Get the string representation of a non-standard key.
+ *
+ * @param key The key to get the string for.
+ * @return The string representation of the key.
+ */
+const char *ncu_keystr(uint32_t key);
 
 #endif //NC_UTILS_H
