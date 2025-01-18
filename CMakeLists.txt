@@ -23,6 +23,9 @@ find_package(Notcurses CONFIG REQUIRED)
 # Find all the common sources recursively
 file(GLOB_RECURSE SRC_CORE src/core/*.c)
 
+# Define DEBUG macro for debug builds
+add_compile_definitions("DEBUG=$<CONFIG:Debug>")
+
 # Define individual puzzle executables
 file(GLOB SRC_PUZZLES src/*.c)
 foreach (puzzle_file ${SRC_PUZZLES})
@@ -31,7 +34,7 @@ foreach (puzzle_file ${SRC_PUZZLES})
 
     add_executable(${puzzle_name} ${puzzle_file})
     target_sources(${puzzle_name} PUBLIC ${SRC_CORE})
-    target_link_libraries(${puzzle_name} PUBLIC Notcurses)
+    target_link_libraries(${puzzle_name} PUBLIC Notcurses Notcurses-core)
 endforeach ()
 
 # Set up testing
