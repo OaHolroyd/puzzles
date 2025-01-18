@@ -90,13 +90,8 @@ int ui_setup(struct notcurses *nc, struct UI *ui) {
   unsigned int rows, cols;
   ncplane_dim_yx(ui->pln_std, &rows, &cols);
 
-  /* black background, white foreground */
-  ncplane_set_bchannel(ui->pln_std, 0x40000000);
-  ncplane_set_fchannel(ui->pln_std, 0x40FFFFFF);
-  ncutil_fill(ui->pln_std, ' ');
-
   /* border around the board */
-  struct ncplane_options opts;
+  ncplane_options opts;
   opts.y = 0;
   opts.x = 0;
   opts.rows = CELL_HEIGHT * SIZE + 2;
@@ -284,7 +279,7 @@ int main(int argc, char const *argv[]) {
   game_reset(&game);
 
   /* start notcurses */
-  struct notcurses *nc = ncu_start();
+  struct notcurses *nc = ncutil_start();
   LOG("INFO: started notcurses");
   if (nc == NULL) {
     return 1;
@@ -349,7 +344,7 @@ int main(int argc, char const *argv[]) {
 
   /* clean up resources */
   ui_destroy(&ui);
-  ncu_end(nc);
+  ncutil_end(nc);
 
   return 0;
 }

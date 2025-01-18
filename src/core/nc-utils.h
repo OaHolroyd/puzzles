@@ -31,7 +31,7 @@ ncscale_e get_scale(ncblitter_e blitter);
  *
  * @return The notcurses handle.
  */
-struct notcurses *ncu_start(void);
+struct notcurses *ncutil_start(void);
 
 
 /**
@@ -39,7 +39,7 @@ struct notcurses *ncu_start(void);
  *
  * @param nc The notcurses handle.
  */
-void ncu_end(struct notcurses *nc);
+void ncutil_end(struct notcurses *nc);
 
 
 /**
@@ -83,5 +83,6 @@ int ncutil_grid(struct ncplane *ncp, struct ncplane **grid, int rows, int cols, 
  * @return The string representation of the key.
  */
 const char *ncu_keystr(uint32_t key);
+
 
 #endif //NC_UTILS_H

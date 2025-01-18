@@ -26,7 +26,7 @@ ncscale_e get_scale(const ncblitter_e blitter) {
 }
 
 
-struct notcurses *ncu_start(void) {
+struct notcurses *ncutil_start(void) {
   const notcurses_options opts = {
     .termtype = NULL,
     .loglevel = NCLOGLEVEL_SILENT,
@@ -52,7 +52,7 @@ struct notcurses *ncu_start(void) {
 }
 
 
-void ncu_end(struct notcurses *nc) {
+void ncutil_end(struct notcurses *nc) {
   notcurses_leave_alternate_screen(nc);
   notcurses_stop(nc);
 }
@@ -92,11 +92,15 @@ void ncutil_fill(struct ncplane *ncp, const char ch) {
   unsigned int rows, cols;
   ncplane_dim_yx(ncp, &rows, &cols);
 
+  nccell ce = NCCELL_INITIALIZER((uint32_t)ch, ncplane_styles(ncp), ncplane_channels(ncp));
+
   for (unsigned y = 0; y < rows; y++) {
     for (unsigned x = 0; x < cols; x++) {
-      ncplane_putchar_yx(ncp, y, x, ch);
+      ncplane_putc_yx(ncp, y, x, &ce);
     }
   }
+
+  nccell_release(ncp, &ce);
 }
 
 
@@ -118,7 +122,7 @@ int ncutil_grid(
   /* create the grid */
   for (int i = 0; i < rows; i++) {
     for (int j = 0; j < cols; j++) {
-      struct ncplane_options opts = {
+      ncplane_options opts = {
         .y = i * height,
         .x = j * width,
         .rows = height,
