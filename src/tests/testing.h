@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 
-char *TEST_NAME;
+const char *TEST_NAME;
 int ERR_COUNT;
 
 #define START_TEST(title) { TEST_NAME = title; ERR_COUNT = 0; }

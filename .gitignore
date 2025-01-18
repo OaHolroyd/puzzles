@@ -1,7 +1,10 @@
+# Makefile-generated files
+/puzzles
+/obj
+/tests
+
+# Local misc.
 .DS_Store
-build
-build-debug
-build-release
 .idea
 
 
