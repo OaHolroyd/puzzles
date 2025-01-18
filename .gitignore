@@ -1,7 +1,7 @@
 # Makefile-generated files
-puzzles
-obj
-tests
+/puzzles
+/obj
+/tests
 
 # Local misc.
 .DS_Store
