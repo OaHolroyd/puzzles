@@ -5,7 +5,7 @@
 
 
 const char *TEST_NAME;
-char *SUBTEST_NAME;
+const char *SUBTEST_NAME;
 int ERR_COUNT;
 
 #define START_TEST(title) { TEST_NAME = title; SUBTEST_NAME = ""; ERR_COUNT = 0; }

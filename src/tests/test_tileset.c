@@ -2,7 +2,7 @@
 
 #include <string.h>
 
-#include <core/game_tileset.h>
+#include "src/core/game_tileset.h"
 
 
 int main(void) {
