@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 
-char *TEST_NAME;
+const char *TEST_NAME;
 char *SUBTEST_NAME;
 int ERR_COUNT;
 
