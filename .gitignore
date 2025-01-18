@@ -1,8 +1,14 @@
+# Puzzle executables
+2048
+tileset
+
+# Local misc.
 .DS_Store
-build
-build-debug
-build-release
 .idea
+
+# Makefile-generated files
+obj
+tests
 
 
 # Prerequisites
