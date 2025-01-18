@@ -15,7 +15,7 @@
  * @param move The move to perform.
  * @return 0 if no move was made, 1 otherwise.
  */
-int movemerge(struct Game *game, const Move move) {
+static int movemerge(struct Game *game, const Move move) {
   int has_moved = 0;
 
   /* set up the loops depending on the move direction */
@@ -103,7 +103,7 @@ int movemerge(struct Game *game, const Move move) {
  * @param game The game state.
  * @return The index of the added tile.
  */
-int fill_random_cell(struct Game *game) {
+static int fill_random_cell(struct Game *game) {
   /* choose a random empty cell */
   int n = rand() % game->nz;
   game->nz--;
@@ -129,7 +129,12 @@ int fill_random_cell(struct Game *game) {
 }
 
 
-void set_status(struct Game *game) {
+/**
+ * Update the game status by checking for possible moves.
+ *
+ * @param game The game state.
+ */
+static void set_status(struct Game *game) {
   /* if there are any non-zero cells then there must be a possible move */
   if (game->nz) {
     game->status = PLAYING;
@@ -162,7 +167,7 @@ void set_status(struct Game *game) {
 }
 
 
-void game_reset(struct Game *game) {
+void reset_2048(struct Game *game) {
   game->score = 0;
   game->turn = 0;
   game->status = PLAYING;
@@ -177,7 +182,7 @@ void game_reset(struct Game *game) {
 }
 
 
-Result game_move(struct Game *game, const Move move) {
+Result move_2048(struct Game *game, const Move move) {
   memset(game->merge, 0, SIZE*SIZE*sizeof(game->merge[0])); // reset merge info
 
   /* move/merge until no more moves/merges are possible */
@@ -197,8 +202,8 @@ Result game_move(struct Game *game, const Move move) {
 }
 
 
-Result game_turn(struct Game *game, const Move move) {
-  const Result result = game_move(game, move);
+Result turn_2048(struct Game *game, const Move move) {
+  const Result result = move_2048(game, move);
 
   if (result == MOVE_ERROR) {
     return result;

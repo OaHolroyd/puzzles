@@ -1,5 +1,7 @@
 #include <stdio.h>
 
+#include "core/game_tileset.h"
+
 
 int main(int argc, char const *argv[]) {
   fprintf(stderr, "filename: %s\n", argv[0]);

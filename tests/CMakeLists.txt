@@ -5,7 +5,7 @@ file(GLOB_RECURSE SRC_CORE ../src/core/*.c)
 include_directories(../src)
 
 # Define individual test executables and add them to tests
-set(SRC_TESTS test_2048.c)
+set(SRC_TESTS test_2048.c test_tileset.c)
 foreach (test_file ${SRC_TESTS})
     # get test name by removing file extension and directory path
     get_filename_component(test_name ${test_file} NAME_WE)

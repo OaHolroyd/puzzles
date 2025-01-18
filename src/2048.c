@@ -276,7 +276,7 @@ int main(int argc, char const *argv[]) {
   /* set up a 2048 game state */
   srand(time(NULL));
   struct Game game;
-  game_reset(&game);
+  reset_2048(&game);
 
   /* start notcurses */
   struct notcurses *nc = ncutil_start();
@@ -314,21 +314,21 @@ int main(int argc, char const *argv[]) {
     switch (key) {
       // four move directions
       case NCKEY_DOWN:
-        result = game_turn(&game, DOWN);
+        result = turn_2048(&game, DOWN);
         break;
       case NCKEY_UP:
-        result = game_turn(&game, UP);
+        result = turn_2048(&game, UP);
         break;
       case NCKEY_LEFT:
-        result = game_turn(&game, LEFT);
+        result = turn_2048(&game, LEFT);
         break;
       case NCKEY_RIGHT:
-        result = game_turn(&game, RIGHT);
+        result = turn_2048(&game, RIGHT);
         break;
       // reset the game
       case 'R':
       case 'r':
-        game_reset(&game);
+        reset_2048(&game);
         result = MOVE_SUCCESS; // force a render
         break;
       default:
