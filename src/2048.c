@@ -155,7 +155,7 @@ int ui_setup(struct notcurses *nc, struct UI *ui) {
   LOG("INFO: created info plane");
 
   /* add a grid over the top */
-  int err = ncutil_grid(ui->pln_board, ui->grid, SIZE, SIZE, CELL_WIDTH, CELL_HEIGHT);
+  const int err = ncutil_grid(ui->pln_board, ui->grid, SIZE, SIZE, CELL_WIDTH, CELL_HEIGHT);
   if (err) {
     // failed to create the grid
     ncplane_destroy(ui->pln_border);
@@ -217,12 +217,12 @@ void ui_destroy(struct UI *ui) {
  * @param ui The user interface.
  * @param game The game state.
  */
-void ui_render(struct UI *ui, struct Game *game) {
+void ui_render(const struct UI *ui, const struct Game *game) {
   /* set the color and text of the grid cells */
   for (int i = 0; i < SIZE; i++) {
     for (int j = 0; j < SIZE; j++) {
       struct ncplane *cell = ui->grid[i * SIZE + j];
-      int value = game->grid[i * SIZE + j];
+      const int value = game->grid[i * SIZE + j];
       unsigned height, width;
       ncplane_dim_yx(cell, &height, &width);
 
@@ -301,7 +301,7 @@ int main(int argc, char const *argv[]) {
   /* game loop */
   ncinput input = {0};
   while (1) {
-    uint32_t key = notcurses_get_blocking(nc, &input);
+    const uint32_t key = notcurses_get_blocking(nc, &input);
     LOG("INFO: key pressed: %d [%c, %s]", key, key, ncu_keystr(key));
 
     /* special key handling */
