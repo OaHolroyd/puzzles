@@ -12,7 +12,7 @@ WARNINGS=-Wall -Wextra -pedantic -Wno-unused-parameter -Wshadow \
          -Wnested-externs -Wpointer-arith -Wconversion -Wno-sign-conversion \
          -Wredundant-decls -Wsequence-point -Wstrict-prototypes -Wswitch -Wundef \
          -Wunused-but-set-parameter -Wwrite-strings
-CFLAGS=
+CFLAGS=-O3
 CFLAGS_DEBUG=-O0 -g3 -DDEBUG
 CFLAGS_SMALL=-Os -ffunction-sections -fdata-sections
 LDFLAGS=
@@ -26,36 +26,63 @@ LIBS= -lNotcurses -lNotcurses-core -L/opt/homebrew/opt/notcurses/lib
 SRC_DIR=./src
 OBJ_DIR=./obj
 TEST_DIR=./tests
+BIN_DIR=./puzzles
 
-# get source code
+# files relating to core code
 SRC_CORE=$(wildcard $(SRC_DIR)/core/*.c)
 OBJ_CORE=$(addprefix $(OBJ_DIR)/, $(notdir $(SRC_CORE:.c=.o)))
 DEPS_CORE=$(patsubst %.o,%.d,$(OBJ_CORE))
 
+# files relating to test code
 SRC_TEST=$(wildcard $(SRC_DIR)/tests/*.c)
 OBJ_TEST=$(addprefix $(OBJ_DIR)/, $(notdir $(SRC_TEST:.c=.o)))
 DEPS_TEST=$(patsubst %.o,%.d,$(OBJ_TEST))
 TESTS=$(addprefix $(TEST_DIR)/, $(notdir $(SRC_TEST:.c=)))
 RUN_TESTS=$(addprefix run_, $(notdir $(TESTS)))
 
+# puzzles will eventually be put in $(BIN_DIR)
+BIN_PUZZLES=$(addprefix $(BIN_DIR)/, $(PUZZLES))
 
+
+# build all the puzzles
 .PHONY: all
-all: $(PUZZLES)
+all: $(BIN_PUZZLES)
+
+# rebuild the project
+.PHONY: rebuild
+rebuild:
+	$(MAKE) clean
+	$(MAKE) all
+
+# forces a debug build
+.PHONY: debug
+debug: CFLAGS=$(CFLAGS_DEBUG)
+debug:
+	$(MAKE) clean
+	$(MAKE) all
+
+# forces a size-optimised build
+.PHONY: small
+small: CFLAGS=$(CFLAGS_SMALL)
+small: LDLAGS=$(LDLAGS_SMALL)
+small:
+	$(MAKE) clean
+	$(MAKE) all
 
 # return the project to it's pre-build state
 .PHONY: clean
 clean:
 	@printf "`tput bold``tput setaf 1`Cleaning`tput sgr0`\n"
-	rm -rf $(OBJ_DIR) $(TEST_DIR) $(PUZZLES)
+	rm -rf $(OBJ_DIR) $(TEST_DIR) $(BIN_DIR)
 
-# run all tests
+# build then run all tests
 .PHONY: check
 check: $(RUN_TESTS)
 
 # link the core objects and the correct TUI object into a puzzle
-$(PUZZLES): % : obj/%.o $(OBJ_CORE)
+$(BIN_PUZZLES): $(BIN_DIR)/% : obj/%.o $(OBJ_CORE) | $(BIN_DIR)
 	@printf "`tput bold``tput setaf 2`Linking %s`tput sgr0`\n" $@
-	$(LD) $(LDFLAGS) -o $@ obj/$@.o $(OBJ_CORE) $(LIBS)
+	$(LD) $(LDFLAGS) -o $@ obj/$*.o $(OBJ_CORE) $(LIBS)
 
 # link the core objects and the correct test object to make a test
 $(TESTS): tests/% : obj/%.o $(OBJ_CORE) | $(TEST_DIR)
@@ -80,6 +107,10 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/tests/%.c | $(OBJ_DIR)
 # include dependency information
 -include $(DEPS_CORE)
 -include $(DEPS_TEST)
+
+# create directory for puzzle executables
+$(BIN_DIR):
+	mkdir -p $(BIN_DIR)
 
 # create directory for .o files
 $(OBJ_DIR):

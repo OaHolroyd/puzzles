@@ -1,14 +1,11 @@
-# Puzzle executables
-2048
-tileset
+# Makefile-generated files
+puzzles
+obj
+tests
 
 # Local misc.
 .DS_Store
 .idea
-
-# Makefile-generated files
-obj
-tests
 
 
 # Prerequisites
