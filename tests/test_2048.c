@@ -6,13 +6,13 @@
 
 
 int main(void) {
-  START_TEST("test_2048");
+  START_TEST("2048");
   REQUIRE(SIZE * SIZE == 16);
 
   struct Game game;
 
   /* basic single pair */
-  {
+  SUBTEST("single pair") {
     int grid0[16] = {
       0, 0, 1, 0,
       0, 0, 1, 0,
@@ -62,7 +62,7 @@ int main(void) {
   }
 
   /* horizontal triple (so order of merge matters) */
-  {
+  SUBTEST("horizontal triple") {
     int grid1[16] = {
       0, 0, 0, 0,
       0, 0, 0, 0,
@@ -129,7 +129,7 @@ int main(void) {
   }
 
   /* vertical triple (so order of merge matters) */
-  {
+  SUBTEST("vertical triple") {
     int grid3[16] = {
       0, 1, 0, 0,
       0, 1, 0, 0,
@@ -196,7 +196,7 @@ int main(void) {
   }
 
   /* full grid (valid plays) */
-  {
+  SUBTEST("full grid (valid)") {
     /* full grid (with valid plays) */
     int grid5[16] = {
       2, 1, 1, 1,
@@ -247,7 +247,7 @@ int main(void) {
   }
 
   /* full grid (no valid plays) */
-  {
+  SUBTEST("full grid (valid)") {
     int grid6[16] = {
       2, 1, 2, 3,
       1, 2, 3, 4,

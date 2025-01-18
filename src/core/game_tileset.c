@@ -13,7 +13,7 @@ static_assert('z' - 'a' == 25);
 
 
 // Available letters, with their frequencies
-const char LETTERS[100] = {
+static const char LETTERS[100] = {
   'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a',
   'b', 'b',
   'c', 'c',
@@ -45,8 +45,8 @@ const char LETTERS[100] = {
 
 
 // Scores for each letter
-const char SCORES[26] = {1, 3, 3, 2, 1, 4, 2, 4, 1, 8, 5, 1, 3, 1, 1, 3, 10, 1, 1, 1, 1, 4, 4, 8, 4, 10,};
-//                       a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p,  q, r, s, t, u, v, w, x, y,  z
+static const char SCORES[26] = {1, 3, 3, 2, 1, 4, 2, 4, 1, 8, 5, 1, 3, 1, 1, 3, 10, 1, 1, 1, 1, 4, 4, 8, 4, 10,};
+//                              a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p,  q, r, s, t, u, v, w, x, y,  z
 
 
 /**
@@ -57,7 +57,7 @@ const char SCORES[26] = {1, 3, 3, 2, 1, 4, 2, 4, 1, 8, 5, 1, 3, 1, 1, 3, 10, 1, 
  * @param letter The letter to get the score of.
  * @return The score of the letter.
  */
-char score_letter(const char letter) {
+static char score_letter(const char letter) {
   if (letter == ' ') {
     return 0;
   }
