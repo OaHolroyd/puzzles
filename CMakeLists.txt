@@ -24,7 +24,7 @@ find_package(Notcurses CONFIG REQUIRED)
 file(GLOB_RECURSE SRC_CORE src/core/*.c)
 
 # Define DEBUG macro for debug builds
-add_compile_definitions("DEBUG=$<CONFIG:Debug>")
+add_compile_definitions("LOGGING=$<CONFIG:Debug>")
 
 # Define individual puzzle executables
 file(GLOB SRC_PUZZLES src/*.c)

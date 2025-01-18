@@ -33,7 +33,7 @@ struct UI {
  * @param cell The cell to set the colors of.
  * @param value The value of the cell (the exponent of 2).
  */
-void set_cell_colors(struct ncplane *cell, int value) {
+static void set_cell_colors(struct ncplane *cell, int value) {
   static_assert(SIZE == 4, "if SIZE != 4 then the colors are not set correctly");
 
   /* define a color array so we can use value as an index */
@@ -81,17 +81,19 @@ void set_cell_colors(struct ncplane *cell, int value) {
  * @param ui The user interface to set up.
  * @return 0 on success, non-zero on failure.
  */
-int ui_setup(struct notcurses *nc, struct UI *ui) {
+static int ui_setup(struct notcurses *nc, struct UI *ui) {
   ui->nc = nc;
   ui->pln_std = notcurses_stdplane(nc);
   ui->pln_board = NULL;
+  ncplane_options opts;
 
   /* get the dimensions of the standard plane */
   unsigned int rows, cols;
   ncplane_dim_yx(ui->pln_std, &rows, &cols);
 
+  // TODO: check that the terminal is large enough
+
   /* border around the board */
-  ncplane_options opts;
   opts.y = 0;
   opts.x = 0;
   opts.rows = CELL_HEIGHT * SIZE + 2;
@@ -186,7 +188,7 @@ int ui_setup(struct notcurses *nc, struct UI *ui) {
  *
  * @param ui The user interface.
  */
-void ui_destroy(struct UI *ui) {
+static void ui_destroy(struct UI *ui) {
   for (int k = 0; k < SIZE * SIZE; k++) {
     if (ui->grid[k]) {
       ncplane_destroy(ui->grid[k]);
@@ -217,7 +219,7 @@ void ui_destroy(struct UI *ui) {
  * @param ui The user interface.
  * @param game The game state.
  */
-void ui_render(const struct UI *ui, const struct Game *game) {
+static void ui_render(const struct UI *ui, const struct Game *game) {
   /* set the color and text of the grid cells */
   for (int i = 0; i < SIZE; i++) {
     for (int j = 0; j < SIZE; j++) {
@@ -287,8 +289,7 @@ int main(int argc, char const *argv[]) {
 
   /* create the game board */
   struct UI ui;
-  ui_setup(nc, &ui);
-  if (!ui.pln_board) {
+  if (ui_setup(nc, &ui)) {
     LOG("ERROR: failed to set up UI");
     notcurses_leave_alternate_screen(nc);
     notcurses_stop(nc);
@@ -299,8 +300,8 @@ int main(int argc, char const *argv[]) {
   ui_render(&ui, &game);
 
   /* game loop */
-  ncinput input = {0};
   while (1) {
+    ncinput input = {0};
     const uint32_t key = notcurses_get_blocking(nc, &input);
     LOG("INFO: key pressed: %d [%c, %s]", key, key, ncu_keystr(key));
 

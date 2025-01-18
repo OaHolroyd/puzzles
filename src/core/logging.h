@@ -10,7 +10,7 @@ void log_clear(void);
 /* logs a debugging message to the global log file */
 #define LOG(fmt, ...) { internal_log(__FILE__, __LINE__, fmt, ##__VA_ARGS__); }
 
-void internal_log(const char *file, const int line, const char *format, ...);
+void internal_log(const char *file, int line, const char *format, ...);
 
 
 #endif //LOGGING_H
