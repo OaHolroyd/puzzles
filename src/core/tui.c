@@ -4,8 +4,10 @@
 
 #include "tui.h"
 
+
 #include <string.h>
 #include <locale.h>
+
 
 void tui_start(void) {
   setlocale(LC_ALL, ""); // set locale to allow wide characters

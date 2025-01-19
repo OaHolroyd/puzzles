@@ -36,7 +36,7 @@ struct UI {
  * @param value The value to get the color pair for.
  * @return The color pair.
  */
-chtype color_pair_for_value(int value) {
+chtype color_pair_for_value(const int value) {
   return COLOR_PAIR(value + COLOR_START);
 }
 
@@ -111,14 +111,22 @@ int ui_setup(struct UI *ui) {
   ui->win_info = NULL;
   memset(ui->grid, 0, sizeof(ui->grid));
 
-  /* set up the color pairs for the TUI */
-  ui_setup_colors();
-
   /* get the dimensions of the standard plane */
   unsigned int rows, cols;
   getmaxyx(stdscr, rows, cols);
 
-  // TODO: check if the terminal is large enough for the TUI
+  /* check if the terminal is large enough for the TUI */
+  if (cols >= 1 + CELL_WIDTH * SIZE + 9 && rows >= 2 + CELL_HEIGHT * SIZE) {
+    ui->alignment = 0;
+  } else if (rows >= 1 + CELL_HEIGHT * SIZE + 4 && cols >= 2 + CELL_WIDTH * SIZE) {
+    ui->alignment = 1;
+  } else {
+    LOG("ERROR: screen is too small for the TUI");
+    return 1;
+  }
+
+  /* set up the color pairs for the TUI */
+  ui_setup_colors();
 
   /* border around the board */
   ui->win_border = win_create(CELL_HEIGHT * SIZE + 2, CELL_WIDTH * SIZE + 2, 0, 0);
@@ -133,19 +141,10 @@ int ui_setup(struct UI *ui) {
 
   /* decide on horizontal or vertical alignment for the info pane (prefer horizontal) */
   static_assert(SIZE == 4, "if SIZE != 4 then the max score width is different");
-  if (cols >= 1 + CELL_WIDTH * SIZE + 9) {
-    ui->alignment = 0;
+  if (ui->alignment == 0) {
     ui->win_info = win_create(7, 9, 0, 1 + CELL_WIDTH * SIZE + 1);
-  } else if (rows >= 1 + CELL_HEIGHT * SIZE + 4) {
-    ui->alignment = 1;
-    ui->win_info = win_create(4, 16, 1 + CELL_HEIGHT * SIZE + 1, 0);
   } else {
-    LOG("ERROR: screen is too small for the TUI");
-    win_destroy(ui->win_border);
-    ui->win_border = NULL;
-    win_destroy(ui->win_board);
-    ui->win_board = NULL;
-    return 1;
+    ui->win_info = win_create(4, 16, 1 + CELL_HEIGHT * SIZE + 1, 0);
   }
   LOG("INFO: created info plane");
   win_border(ui->win_info, BOXLIGHT, A_BOLD);
@@ -215,9 +214,7 @@ void ui_render(const struct UI *ui, const struct Game *game) {
         // find length of label
         char text[CELL_WIDTH + 1];
         snprintf(text, CELL_WIDTH, "%d", 1 << value);
-        int len = strlen(text);
-
-        mvwprintw(cell, 1, (CELL_WIDTH - len) / 2, text);
+        mvwprintw(cell, 1, (CELL_WIDTH - strlen(text)) / 2, text);
       }
       wrefresh(cell);
     }
