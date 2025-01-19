@@ -96,6 +96,9 @@ static int ui_setup(struct UI *ui) {
  * @param ui The user interface.
  */
 static void ui_destroy(struct UI *ui) {
+  win_destroy(ui->win_esc);
+  ui->win_esc = NULL;
+
   for (int k = 0; k < SIZE; k++) {
     win_destroy(ui->grid[k]);
     ui->grid[k] = NULL;
@@ -116,15 +119,12 @@ static void ui_render(const struct UI *ui, const struct Game *game) {
   /* set the escape menu */
   if (ui->esc_mode) {
     wbkgd(ui->win_esc, COLOR_PAIR(205));
-    werase(ui->win_esc);
-    mvwprintw(ui->win_esc, 0, 0, "ESC: [R]eset [S]huffle [Q]uit");
-    wrefresh(ui->win_esc);
   } else {
     wbkgd(ui->win_esc, COLOR_PAIR(204));
-    werase(ui->win_esc);
-    mvwprintw(ui->win_esc, 0, 0, "ESC: [R]eset [S]huffle [Q]uit");
-    wrefresh(ui->win_esc);
   }
+  werase(ui->win_esc);
+  mvwprintw(ui->win_esc, 0, 0, "ESC: [R]eset [S]huffle [Q]uit");
+  wrefresh(ui->win_esc);
 
   /* set the color and text of the tile cells */
   for (int i = 0; i < SIZE; i++) {

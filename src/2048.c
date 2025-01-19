@@ -24,7 +24,8 @@ struct UI {
   WINDOW *grid[SIZE * SIZE]; // grid of cells
   int alignment; // 0 = horizontal, 1 = vertical
   WINDOW *win_info; // info plane
-  WINDOW *win_guide; // for instructions
+  int esc_mode; // 0 = normal, 1 = escape
+  WINDOW *win_esc; // container for the escape menu
 };
 
 
@@ -83,14 +84,22 @@ static int ui_setup_colors(void) {
 
   /* create the colors and combine them into a pair */
   const short num_pairs = 19;
-  static_assert((COLOR_START + 2 * num_pairs) < 256, "color index may not exceed 255");
-  static_assert((COLOR_START + 2 * num_pairs + 1) < 256, "color index may not exceed 255");
-  static_assert((COLOR_START + num_pairs) < 256, "color pair index may not exceed 255");
+  static_assert((COLOR_START + 2 * num_pairs) < 250, "color index may not exceed 255");
+  static_assert((COLOR_START + 2 * num_pairs + 1) < 250, "color index may not exceed 255");
+  static_assert((COLOR_START + num_pairs) < 250, "color pair index may not exceed 255");
   for (short i = 0; i < num_pairs; i++) {
     init_hex_color(COLOR_START + 2 * i, hex_colors[i][1]);
     init_hex_color(COLOR_START + 2 * i + 1, hex_colors[i][0]);
     init_pair(COLOR_START + i, COLOR_START + 2 * i, COLOR_START + 2 * i + 1);
   }
+
+  /* create escape mode colors */
+  init_hex_color(250, 0x000000); // black
+  init_hex_color(251, 0xFFFFFF); // white
+  init_pair(250, 250, 251); // black on white (ESC mode on)
+
+  init_hex_color(252, 0x606060); // mid grey
+  init_pair(251, 252, 250); // mid grey on black (ESC mode off)
 
   return 0;
 }
@@ -114,9 +123,9 @@ static int ui_setup(struct UI *ui) {
   getmaxyx(stdscr, rows, cols);
 
   /* check if the terminal is large enough for the TUI */
-  if (cols >= 1 + CELL_WIDTH * SIZE + 9 && rows >= 2 + CELL_HEIGHT * SIZE) {
+  if (cols >= 2 + CELL_WIDTH * SIZE + 9 && rows >= 2 + CELL_HEIGHT * SIZE) {
     ui->alignment = 0;
-  } else if (rows >= 1 + CELL_HEIGHT * SIZE + 4 && cols >= 2 + CELL_WIDTH * SIZE) {
+  } else if (rows >= 1 + CELL_HEIGHT * SIZE + 4 && cols >= 3 + CELL_WIDTH * SIZE) {
     ui->alignment = 1;
   } else {
     LOG("ERROR: screen is too small for the TUI");
@@ -126,43 +135,34 @@ static int ui_setup(struct UI *ui) {
   /* set up the color pairs for the TUI */
   ui_setup_colors();
 
+  /* escape window at the top */
+  ui->win_esc = win_create(1, cols, 0, 0);
+  LOG("INFO: created esc window");
+
   /* border around the board */
-  ui->win_border = win_create(CELL_HEIGHT * SIZE + 2, CELL_WIDTH * SIZE + 2, 0, 0);
+  ui->win_border = win_create(CELL_HEIGHT * SIZE + 2, CELL_WIDTH * SIZE + 2, 1, 0);
   LOG("INFO: created border window");
   win_border(ui->win_border, BOXLIGHT, A_BOLD);
   wrefresh(ui->win_border);
 
   /* create the game board */
-  ui->win_board = win_create(CELL_HEIGHT * SIZE, CELL_WIDTH * SIZE, 1, 1);
+  ui->win_board = win_create(CELL_HEIGHT * SIZE, CELL_WIDTH * SIZE, 2, 1);
   LOG("INFO: created board window");
-
 
   /* decide on horizontal or vertical alignment for the info window (prefer horizontal) */
   static_assert(SIZE == 4, "if SIZE != 4 then the max score width is different");
   if (ui->alignment == 0) {
-    ui->win_info = win_create(7, 9, 0, 1 + CELL_WIDTH * SIZE + 1);
+    ui->win_info = win_create(10, 9, 1, 1 + CELL_WIDTH * SIZE + 1);
   } else {
-    ui->win_info = win_create(4, 16, 1 + CELL_HEIGHT * SIZE + 1, 0);
+    ui->win_info = win_create(4, 23, 2 + CELL_HEIGHT * SIZE + 1, 0);
   }
   LOG("INFO: created info window");
   win_border(ui->win_info, BOXLIGHT, A_BOLD);
 
 
   /* add a grid over the top */
-  tui_grid(ui->grid, SIZE, SIZE, CELL_HEIGHT, CELL_WIDTH, 1, 1);
+  tui_grid(ui->grid, SIZE, SIZE, CELL_HEIGHT, CELL_WIDTH, 2, 1);
   LOG("INFO: created grid window");
-
-
-  /* show instructions */
-  if (ui->alignment == 0) {
-    ui->win_guide = win_create(7, 9, 7, 1 + CELL_WIDTH * SIZE + 1);
-  } else {
-    ui->win_guide = win_create(4, 16, 1 + CELL_HEIGHT * SIZE + 1, 16);
-  }
-  win_border(ui->win_guide, BOXLIGHT, A_BOLD);
-  mvwprintw(ui->win_guide, 1, 1, "[R]ESET");
-  mvwprintw(ui->win_guide, 2, 1, "[Q]UIT");
-  wrefresh(ui->win_guide);
 
   return 0;
 }
@@ -174,6 +174,9 @@ static int ui_setup(struct UI *ui) {
  * @param ui The user interface.
  */
 static void ui_destroy(struct UI *ui) {
+  win_destroy(ui->win_esc);
+  ui->win_esc = NULL;
+
   for (int k = 0; k < SIZE * SIZE; k++) {
     win_destroy(ui->grid[k]);
     ui->grid[k] = NULL;
@@ -185,7 +188,7 @@ static void ui_destroy(struct UI *ui) {
   win_destroy(ui->win_board);
   ui->win_board = NULL;
 
-  win_destroy(ui->win_board);
+  win_destroy(ui->win_info);
   ui->win_info = NULL;
 }
 
@@ -197,6 +200,16 @@ static void ui_destroy(struct UI *ui) {
  * @param game The game state.
  */
 static void ui_render(const struct UI *ui, const struct Game *game) {
+  /* set the escape menu */
+  if (ui->esc_mode) {
+    wbkgd(ui->win_esc, COLOR_PAIR(250));
+  } else {
+    wbkgd(ui->win_esc, COLOR_PAIR(251));
+  }
+  werase(ui->win_esc);
+  mvwprintw(ui->win_esc, 0, 0, "ESC: [R]eset [Q]uit");
+  wrefresh(ui->win_esc);
+
   /* set the color and text of the grid cells */
   for (int i = 0; i < SIZE; i++) {
     for (int j = 0; j < SIZE; j++) {
@@ -219,22 +232,37 @@ static void ui_render(const struct UI *ui, const struct Game *game) {
   }
 
   /* refresh score and turn count */
-  mvwprintw(ui->win_info, 1, 1, "score");
+  mvwprintw(ui->win_info, 1, 1, "%7s", "score");
   mvwprintw(ui->win_info, 2, 1, "%7d", game->score);
-  mvwprintw(ui->win_info, 4, 1, "turn");
-  mvwprintw(ui->win_info, 5, 1, "%7d", game->turn);
-  wrefresh(ui->win_info);
 
-  /* guide window might need game over message */
+  if (ui->alignment == 0) {
+    mvwprintw(ui->win_info, 4, 1, "%7s", "turn");
+    mvwprintw(ui->win_info, 5, 1, "%7d", game->turn);
+  } else {
+    mvwprintw(ui->win_info, 1, 9, "%6s", "turn");
+    mvwprintw(ui->win_info, 2, 9, "%6d", game->turn);
+  }
+  
+  /* info window might need game over message */
   if (game->status != PLAYING) {
-    mvwprintw(ui->win_guide, 4, 1, "GAME");
-    mvwprintw(ui->win_guide, 5, 1, "OVER");
+    if (ui->alignment == 0) {
+      mvwprintw(ui->win_info, 7, 2, "GAME");
+      mvwprintw(ui->win_info, 8, 2, "OVER");
+    } else {
+      mvwprintw(ui->win_info, 1, 17, "GAME");
+      mvwprintw(ui->win_info, 2, 17, "OVER");
+    }
   } else {
     // hide message after game reset
-    mvwprintw(ui->win_guide, 4, 1, "    ");
-    mvwprintw(ui->win_guide, 5, 1, "    ");
+    if (ui->alignment == 0) {
+      mvwprintw(ui->win_info, 7, 2, "    ");
+      mvwprintw(ui->win_info, 8, 2, "    ");
+    } else {
+      mvwprintw(ui->win_info, 1, 17, "    ");
+      mvwprintw(ui->win_info, 2, 17, "    ");
+    }
   }
-  wrefresh(ui->win_guide);
+  wrefresh(ui->win_info);
 }
 
 
@@ -259,44 +287,56 @@ int main(int argc, char const *argv[]) {
   }
 
   // use an unimportant plane for key handling
-  tui_keypad(ui.win_guide); // enable extra keyboard input (arrow keys etc.)
+  tui_keypad(ui.win_info); // enable extra keyboard input (arrow keys etc.)
 
   /* render the screen before starting the game */
   ui_render(&ui, &game);
 
   /* game loop */
   while (1) {
-    const int key = wgetch(ui.win_guide);
+    const int key = wgetch(ui.win_info);
     LOG("INFO: key pressed: %d [%c, %s]", key, key, nc_keystr(key));
 
-    /* special key handling */
-    if (key == 'q' || key == 'Q') {
-      break;
-    }
+    if (key == KEY_ESC) {
+      /* escape key is special - it toggles between input modes */
+      LOG("INFO: toggle escape mode");
+      ui.esc_mode = !ui.esc_mode;
+    } else if (ui.esc_mode) {
+      /* ESC MODE ON */
+      if (key == 'q' || key == 'Q') {
+        break;
+      }
 
-    /* handle keypress */
-    switch (key) {
-      // four move directions
-      case KEY_DOWN:
-        turn_2048(&game, DOWN);
-        break;
-      case KEY_UP:
-        turn_2048(&game, UP);
-        break;
-      case KEY_LEFT:
-        turn_2048(&game, LEFT);
-        break;
-      case KEY_RIGHT:
-        turn_2048(&game, RIGHT);
-        break;
-      // reset the game
-      case 'R':
-      case 'r':
-        reset_2048(&game);
-        break;
-      default:
-        // do nothing if key is not valid
-        break;
+      switch (key) {
+        case 'R':
+        case 'r':
+          reset_2048(&game);
+          break;
+        default:
+          // do nothing if key is not valid
+          break;
+      }
+    } else {
+      /* ESC MODE OFF */
+      /* handle keypress */
+      switch (key) {
+        // four move directions
+        case KEY_DOWN:
+          turn_2048(&game, DOWN);
+          break;
+        case KEY_UP:
+          turn_2048(&game, UP);
+          break;
+        case KEY_LEFT:
+          turn_2048(&game, LEFT);
+          break;
+        case KEY_RIGHT:
+          turn_2048(&game, RIGHT);
+          break;
+        default:
+          // do nothing if key is not valid
+          break;
+      }
     }
 
     /* render the screen at the end of every loop */
