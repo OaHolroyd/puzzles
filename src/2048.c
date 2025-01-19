@@ -1,40 +1,56 @@
+#include <stdlib.h>
 #include <stdio.h>
+#include <time.h>
 #include <unistd.h>
 #include <assert.h>
-
-#include <notcurses/notcurses.h>
+#include <string.h>
 
 #include "core/logging.h"
-#include "core/nc-utils.h"
+#include "core/tui.h"
 #include "core/game_2048.h"
 
 
 #define CELL_WIDTH (7)
 #define CELL_HEIGHT (3)
+#define COLOR_START (200) // start of color pairs (mucks up colors from here up)
 
 
 /**
  * User interface wrapper struct.
  */
 struct UI {
-  struct notcurses *nc;
-  struct ncplane *pln_std;
-  struct ncplane *pln_border; // allows for a border around the board
-  struct ncplane *pln_board; // container for the grid
-  struct ncplane *grid[SIZE * SIZE]; // grid of cells
+  WINDOW *win_border; // allows for a border around the board
+  WINDOW *win_board; // container for the grid
+  WINDOW *grid[SIZE * SIZE]; // grid of cells
   int alignment; // 0 = horizontal, 1 = vertical
-  struct ncplane *pln_info; // info plane
+  WINDOW *win_info; // info plane
+  WINDOW *win_guide; // for instructions
 };
 
 
 /**
- * Set the background/foreground colors of a cell based on its value.
+ * Get the color pair for a given value.
  *
- * @param cell The cell to set the colors of.
- * @param value The value of the cell (the exponent of 2).
+ * @param value The value to get the color pair for.
+ * @return The color pair.
  */
-static void set_cell_colors(struct ncplane *cell, int value) {
-  static_assert(SIZE == 4, "if SIZE != 4 then the colors are not set correctly");
+static chtype color_pair_for_value(const int value) {
+  return COLOR_PAIR(value + COLOR_START);
+}
+
+
+/**
+ * Set up the colors for the user interface.
+ *
+ * @return 0 on success, non-zero on failure.
+ */
+static int ui_setup_colors(void) {
+  if (tui_start_color() < 256) {
+    LOG("ERROR: 2048 requires full color support");
+    return 1;
+  }
+
+  static_assert(SIZE == 4, "if SIZE != 4 then the colors are not defined correctly");
 
   /* define a color array so we can use value as an index */
   // NOTE: the first color is the background color, the second is the text color
@@ -65,118 +81,15 @@ static void set_cell_colors(struct ncplane *cell, int value) {
     {0x00FFFF, 0xFF0000}, // 18 error
   };
 
-  if (value < 0 || value > 17) {
-    value = 18;
-  }
-
-  ncplane_set_bchannel(cell, 0x40000000 + hex_colors[value][0]);
-  ncplane_set_fchannel(cell, 0x40000000 + hex_colors[value][1]);
-}
-
-
-/**
- * Set up the user interface.
- *
- * @param nc The notcurses context.
- * @param ui The user interface to set up.
- * @return 0 on success, non-zero on failure.
- */
-static int ui_setup(struct notcurses *nc, struct UI *ui) {
-  ui->nc = nc;
-  ui->pln_std = notcurses_stdplane(nc);
-  ui->pln_board = NULL;
-  ncplane_options opts;
-
-  /* get the dimensions of the standard plane */
-  unsigned int rows, cols;
-  ncplane_dim_yx(ui->pln_std, &rows, &cols);
-
-  // TODO: check that the terminal is large enough
-
-  /* border around the board */
-  opts.y = 0;
-  opts.x = 0;
-  opts.rows = CELL_HEIGHT * SIZE + 2;
-  opts.cols = CELL_WIDTH * SIZE + 2;
-  ui->pln_border = ncplane_create(ui->pln_std, &opts);
-  if (!ui->pln_border) {
-    LOG("ERROR: failed to create border plane");
-    return 1;
-  }
-  LOG("INFO: created border plane");
-  ncutil_perimiter(ui->pln_border, NCBOXROUND);
-
-  /* create the game board */
-  opts.y = 1;
-  opts.x = 1;
-  opts.rows = CELL_HEIGHT * SIZE;
-  opts.cols = CELL_WIDTH * SIZE;
-  ui->pln_board = ncplane_create(ui->pln_std, &opts);
-  if (!ui->pln_board) {
-    LOG("ERROR: failed to create board plane");
-    ncplane_destroy(ui->pln_border);
-    ui->pln_border = NULL;
-    return 1;
-  }
-  LOG("INFO: created board plane");
-
-  /* decide on horizontal or vertical alignment for the info pane (prefer horizontal) */
-  static_assert(SIZE == 4, "if SIZE != 4 then the max score width is different");
-  if (cols >= 1 + CELL_WIDTH * SIZE + 9) {
-    ui->alignment = 0;
-    opts.y = 0;
-    opts.x = 1 + CELL_WIDTH * SIZE + 1;
-    opts.rows = 7;
-    opts.cols = 9; // this is the max score width + 2 (7 + 2)
-  } else if (rows >= 1 + CELL_HEIGHT * SIZE + 4) {
-    ui->alignment = 1;
-    opts.y = 1 + CELL_HEIGHT * SIZE + 1;
-    opts.x = 0;
-    opts.rows = 4;
-    opts.cols = 16; // this is max score width + max turn width + 3 (7 + 6 + 3)
-  } else {
-    // terminal isn't large enough
-    LOG("ERROR: terminal too small for info plane");
-    ncplane_destroy(ui->pln_border);
-    ui->pln_border = NULL;
-    ncplane_destroy(ui->pln_board);
-    ui->pln_board = NULL;
-    return 2;
-  }
-
-  /* set up the info pane */
-  ui->pln_info = ncplane_create(ui->pln_std, &opts);
-  if (!ui->pln_info) {
-    LOG("ERROR: failed to create info plane");
-    ncplane_destroy(ui->pln_border);
-    ui->pln_border = NULL;
-    ncplane_destroy(ui->pln_board);
-    ui->pln_board = NULL;
-    return 3;
-  }
-  LOG("INFO: created info plane");
-
-  /* add a grid over the top */
-  const int err = ncutil_grid(ui->pln_board, ui->grid, SIZE, SIZE, CELL_WIDTH, CELL_HEIGHT);
-  if (err) {
-    // failed to create the grid
-    ncplane_destroy(ui->pln_border);
-    ui->pln_border = NULL;
-    ncplane_destroy(ui->pln_board);
-    ui->pln_board = NULL;
-    ncplane_destroy(ui->pln_info);
-    ui->pln_info = NULL;
-    return 4;
-  }
-  LOG("INFO: created grid plane");
-
-  /* show instructions */
-  if (ui->alignment == 0) {
-    ncplane_putstr_yx(ui->pln_std, 8, SIZE * CELL_WIDTH + 2, "[R]ESET");
-    ncplane_putstr_yx(ui->pln_std, 9, SIZE * CELL_WIDTH + 2, "[Q]UIT");
-  } else {
-    ncplane_putstr_yx(ui->pln_std, SIZE * CELL_HEIGHT + 3, 17, "[R]ESET");
-    ncplane_putstr_yx(ui->pln_std, SIZE * CELL_HEIGHT + 4, 17, "[Q]UIT");
+  /* create the colors and combine them into a pair */
+  const short num_pairs = 19;
+  static_assert((COLOR_START + 2 * num_pairs) < 256, "color index may not exceed 255");
+  static_assert((COLOR_START + 2 * num_pairs + 1) < 256, "color index may not exceed 255");
+  static_assert((COLOR_START + num_pairs) < 256, "color pair index may not exceed 255");
+  for (short i = 0; i < num_pairs; i++) {
+    init_hex_color(COLOR_START + 2 * i, hex_colors[i][1]);
+    init_hex_color(COLOR_START + 2 * i + 1, hex_colors[i][0]);
+    init_pair(COLOR_START + i, COLOR_START + 2 * i, COLOR_START + 2 * i + 1);
   }
 
   return 0;
@@ -184,32 +97,96 @@ static int ui_setup(struct notcurses *nc, struct UI *ui) {
 
 
 /**
- * Free the memory used by the user interface.
+ * Set up the user interface.
+ *
+ * @param ui The user interface to set up.
+ * @return 0 on success, non-zero on failure.
+ */
+static int ui_setup(struct UI *ui) {
+  ui->win_border = NULL;
+  ui->win_board = NULL;
+  ui->alignment = -1;
+  ui->win_info = NULL;
+  memset(ui->grid, 0, sizeof(ui->grid));
+
+  /* get the dimensions of the standard screen */
+  unsigned int rows, cols;
+  getmaxyx(stdscr, rows, cols);
+
+  /* check if the terminal is large enough for the TUI */
+  if (cols >= 1 + CELL_WIDTH * SIZE + 9 && rows >= 2 + CELL_HEIGHT * SIZE) {
+    ui->alignment = 0;
+  } else if (rows >= 1 + CELL_HEIGHT * SIZE + 4 && cols >= 2 + CELL_WIDTH * SIZE) {
+    ui->alignment = 1;
+  } else {
+    LOG("ERROR: screen is too small for the TUI");
+    return 1;
+  }
+
+  /* set up the color pairs for the TUI */
+  ui_setup_colors();
+
+  /* border around the board */
+  ui->win_border = win_create(CELL_HEIGHT * SIZE + 2, CELL_WIDTH * SIZE + 2, 0, 0);
+  LOG("INFO: created border window");
+  win_border(ui->win_border, BOXLIGHT, A_BOLD);
+  wrefresh(ui->win_border);
+
+  /* create the game board */
+  ui->win_board = win_create(CELL_HEIGHT * SIZE, CELL_WIDTH * SIZE, 1, 1);
+  LOG("INFO: created board window");
+
+
+  /* decide on horizontal or vertical alignment for the info window (prefer horizontal) */
+  static_assert(SIZE == 4, "if SIZE != 4 then the max score width is different");
+  if (ui->alignment == 0) {
+    ui->win_info = win_create(7, 9, 0, 1 + CELL_WIDTH * SIZE + 1);
+  } else {
+    ui->win_info = win_create(4, 16, 1 + CELL_HEIGHT * SIZE + 1, 0);
+  }
+  LOG("INFO: created info window");
+  win_border(ui->win_info, BOXLIGHT, A_BOLD);
+
+
+  /* add a grid over the top */
+  tui_grid(ui->grid, SIZE, SIZE, CELL_HEIGHT, CELL_WIDTH, 1, 1);
+  LOG("INFO: created grid window");
+
+
+  /* show instructions */
+  if (ui->alignment == 0) {
+    ui->win_guide = win_create(7, 9, 7, 1 + CELL_WIDTH * SIZE + 1);
+  } else {
+    ui->win_guide = win_create(4, 16, 1 + CELL_HEIGHT * SIZE + 1, 16);
+  }
+  win_border(ui->win_guide, BOXLIGHT, A_BOLD);
+  mvwprintw(ui->win_guide, 1, 1, "[R]ESET");
+  mvwprintw(ui->win_guide, 2, 1, "[Q]UIT");
+  wrefresh(ui->win_guide);
+
+  return 0;
+}
+
+
+/**
+ * Shut down all windows handled by the user interface.
  *
  * @param ui The user interface.
  */
 static void ui_destroy(struct UI *ui) {
   for (int k = 0; k < SIZE * SIZE; k++) {
-    if (ui->grid[k]) {
-      ncplane_destroy(ui->grid[k]);
-      ui->grid[k] = NULL;
-    }
+    win_destroy(ui->grid[k]);
+    ui->grid[k] = NULL;
   }
 
-  if (ui->pln_border) {
-    ncplane_destroy(ui->pln_border);
-  }
-  ui->pln_border = NULL;
+  win_destroy(ui->win_border);
+  ui->win_border = NULL;
 
-  if (ui->pln_board) {
-    ncplane_destroy(ui->pln_board);
-  }
-  ui->pln_board = NULL;
+  win_destroy(ui->win_board);
+  ui->win_board = NULL;
 
-  if (ui->pln_info) {
-    ncplane_destroy(ui->pln_info);
-  }
-  ui->pln_info = NULL;
+  win_destroy(ui->win_board);
+  ui->win_info = NULL;
 }
 
 
@@ -223,51 +200,41 @@ static void ui_render(const struct UI *ui, const struct Game *game) {
   /* set the color and text of the grid cells */
   for (int i = 0; i < SIZE; i++) {
     for (int j = 0; j < SIZE; j++) {
-      struct ncplane *cell = ui->grid[i * SIZE + j];
+      WINDOW *cell = ui->grid[i * SIZE + j];
       const int value = game->grid[i * SIZE + j];
-      unsigned height, width;
-      ncplane_dim_yx(cell, &height, &width);
 
-      /* fill with spaces (to set background color) */
-      set_cell_colors(cell, value);
-      ncutil_fill(cell, ' ');
+      /* set the color based on the value */
+      wbkgd(cell, color_pair_for_value(value));
+      werase(cell);
 
       /* set the text for non-zero cells */
       if (value != 0) {
-        char text[CELL_WIDTH];
+        // find length of label
+        char text[CELL_WIDTH + 1];
         snprintf(text, CELL_WIDTH, "%d", 1 << value);
-        ncplane_putstr_aligned(cell, 1, NCALIGN_CENTER, text);
+        mvwprintw(cell, 1, (CELL_WIDTH - strlen(text)) / 2, text);
       }
+      wrefresh(cell);
     }
   }
 
-  /* update the info */
-  ncutil_perimiter(ui->pln_info, NCBOXROUND);
+  /* refresh score and turn count */
+  mvwprintw(ui->win_info, 1, 1, "score");
+  mvwprintw(ui->win_info, 2, 1, "%7d", game->score);
+  mvwprintw(ui->win_info, 4, 1, "turn");
+  mvwprintw(ui->win_info, 5, 1, "%7d", game->turn);
+  wrefresh(ui->win_info);
 
-  // always say the score
-  ncplane_putstr_yx(ui->pln_info, 1, 1, "score");
-  ncplane_printf_yx(ui->pln_info, 2, 1, "%d", game->score);
-
-  // say the turn if the game is still going
-  if (game->status == PLAYING) {
-    if (ui->alignment == 1) {
-      ncplane_putstr_yx(ui->pln_info, 1, 9, "turn");
-      ncplane_printf_yx(ui->pln_info, 2, 9, "%d", game->turn);
-    } else {
-      ncplane_putstr_yx(ui->pln_info, 4, 1, "turn");
-      ncplane_printf_yx(ui->pln_info, 5, 1, "%d", game->turn);
-    }
+  /* guide window might need game over message */
+  if (game->status != PLAYING) {
+    mvwprintw(ui->win_guide, 4, 1, "GAME");
+    mvwprintw(ui->win_guide, 5, 1, "OVER");
   } else {
-    if (ui->alignment == 1) {
-      ncplane_putstr_yx(ui->pln_info, 1, 9, "GAME");
-      ncplane_putstr_yx(ui->pln_info, 2, 9, "OVER");
-    } else {
-      ncplane_putstr_yx(ui->pln_info, 4, 1, "GAME");
-      ncplane_putstr_yx(ui->pln_info, 5, 1, "OVER");
-    }
+    // hide message after game reset
+    mvwprintw(ui->win_guide, 4, 1, "    ");
+    mvwprintw(ui->win_guide, 5, 1, "    ");
   }
-
-  notcurses_render(ui->nc);
+  wrefresh(ui->win_guide);
 }
 
 
@@ -280,30 +247,27 @@ int main(int argc, char const *argv[]) {
   struct Game game;
   reset_2048(&game);
 
-  /* start notcurses */
-  struct notcurses *nc = ncutil_start();
-  LOG("INFO: started notcurses");
-  if (nc == NULL) {
-    return 1;
-  }
+  /* start up the TUI */
+  tui_start();
 
   /* create the game board */
   struct UI ui;
-  if (ui_setup(nc, &ui)) {
+  if (ui_setup(&ui)) {
     LOG("ERROR: failed to set up UI");
-    notcurses_leave_alternate_screen(nc);
-    notcurses_stop(nc);
+    tui_end();
     return 1;
   }
+
+  // use an unimportant plane for key handling
+  keypad(ui.win_guide, TRUE); // enable extra keyboard input (arrow keys etc.)
 
   /* render the screen before starting the game */
   ui_render(&ui, &game);
 
   /* game loop */
   while (1) {
-    ncinput input = {0};
-    const uint32_t key = notcurses_get_blocking(nc, &input);
-    LOG("INFO: key pressed: %d [%c, %s]", key, key, ncu_keystr(key));
+    const int key = wgetch(ui.win_guide);
+    LOG("INFO: key pressed: %d [%c, %s]", key, key, nc_keystr(key));
 
     /* special key handling */
     if (key == 'q' || key == 'Q') {
@@ -311,41 +275,37 @@ int main(int argc, char const *argv[]) {
     }
 
     /* handle keypress */
-    Result result = MOVE_ERROR;
     switch (key) {
       // four move directions
-      case NCKEY_DOWN:
-        result = turn_2048(&game, DOWN);
+      case KEY_DOWN:
+        turn_2048(&game, DOWN);
         break;
-      case NCKEY_UP:
-        result = turn_2048(&game, UP);
+      case KEY_UP:
+        turn_2048(&game, UP);
         break;
-      case NCKEY_LEFT:
-        result = turn_2048(&game, LEFT);
+      case KEY_LEFT:
+        turn_2048(&game, LEFT);
         break;
-      case NCKEY_RIGHT:
-        result = turn_2048(&game, RIGHT);
+      case KEY_RIGHT:
+        turn_2048(&game, RIGHT);
         break;
       // reset the game
       case 'R':
       case 'r':
         reset_2048(&game);
-        result = MOVE_SUCCESS; // force a render
         break;
       default:
         // do nothing if key is not valid
         break;
     }
 
-    /* render the screen if there were any updates */
-    if (result != MOVE_ERROR) {
-      ui_render(&ui, &game);
-    }
+    /* render the screen at the end of every loop */
+    ui_render(&ui, &game);
   }
 
   /* clean up resources */
   ui_destroy(&ui);
-  ncutil_end(nc);
+  tui_end();
 
   return 0;
 }
