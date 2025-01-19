@@ -102,7 +102,7 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/core/%.c | $(OBJ_DIR)
 # compile test code
 $(OBJ_DIR)/%.o: $(SRC_DIR)/tests/%.c | $(OBJ_DIR)
 	@printf "`tput bold``tput setaf 6`Building %s`tput sgr0`\n" $@
-	$(CC) $(CFLAGS) $(WARNINGS) $(INCLUDES) -I $(SRC_DIR) -MMD -MP -c -o $@ $<
+	$(CC) $(CFLAGS) $(WARNINGS) $(INCLUDES) -MMD -MP -c -o $@ $<
 
 # include dependency information
 -include $(DEPS_CORE)

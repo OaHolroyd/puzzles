@@ -2,7 +2,7 @@
 
 #include <string.h>
 
-#include <core/game_2048.h>
+#include "src/core/game_2048.h"
 
 
 int main(void) {
