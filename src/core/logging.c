@@ -4,7 +4,7 @@
 
 #include "logging.h"
 
-#if !LOGGING
+#if !DEBUG
 
 /* if not built in debug mode, just provide stubs that do nothing */
 void log_start(const char *file) {

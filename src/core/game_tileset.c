@@ -9,7 +9,7 @@
 
 
 // Check that the alphabet is contiguous
-static_assert('z' - 'a' == 25);
+static_assert('z' - 'a' == 25, "alphabet chars must be contiguous");
 
 
 // Available letters, with their frequencies
@@ -57,7 +57,7 @@ static const char SCORES[26] = {1, 3, 3, 2, 1, 4, 2, 4, 1, 8, 5, 1, 3, 1, 1, 3, 
  * @param letter The letter to get the score of.
  * @return The score of the letter.
  */
-static char score_letter(const char letter) {
+char score_letter_tileset(const char letter) {
   if (letter == ' ') {
     return 0;
   }

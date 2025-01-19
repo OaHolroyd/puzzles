@@ -38,4 +38,15 @@ void reset_tileset(struct Game *game);
 void shuffle_tileset(struct Game *game);
 
 
+/**
+ * Get the score of a letter.
+ *
+ * Note that this assumes lowercase letters, and contiguous values of the chars 'a' to 'z'.
+ *
+ * @param letter The letter to get the score of.
+ * @return The score of the letter.
+ */
+char score_letter_tileset(char letter);
+
+
 #endif //GAME_TILESET_H

@@ -259,7 +259,7 @@ int main(int argc, char const *argv[]) {
   }
 
   // use an unimportant plane for key handling
-  keypad(ui.win_guide, TRUE); // enable extra keyboard input (arrow keys etc.)
+  tui_keypad(ui.win_guide); // enable extra keyboard input (arrow keys etc.)
 
   /* render the screen before starting the game */
   ui_render(&ui, &game);

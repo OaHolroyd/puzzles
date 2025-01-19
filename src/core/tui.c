@@ -33,6 +33,13 @@ int tui_start_color(void) {
 }
 
 
+void tui_keypad(WINDOW *win) {
+  keypad(win, TRUE);
+  nodelay(win, TRUE);
+  set_escdelay(0);
+}
+
+
 void tui_grid(WINDOW **grid, int rows, int cols, int height, int width, int offsety, int offsetx) {
   /* set all pointers to NULL to start with */
   memset(grid, 0, sizeof(WINDOW *) * rows * cols);
