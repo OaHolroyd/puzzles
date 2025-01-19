@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include <assert.h>
 
-#include <notcurses/notcurses.h>
+#include <ncurses.h>
 
 #include "core/logging.h"
 #include "core/nc-utils.h"

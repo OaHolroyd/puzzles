@@ -19,8 +19,8 @@ LDFLAGS=
 LDFLAGS_SMALL=-Wl,-dead_strip
 
 # libraries
-INCLUDES=-I /opt/homebrew/opt/notcurses/include
-LIBS= -lNotcurses -lNotcurses-core -L/opt/homebrew/opt/notcurses/lib
+INCLUDES=
+LIBS=-lncurses
 
 # directories
 SRC_DIR=./src
