@@ -8,11 +8,11 @@ LD=$(CC)
 # flags
 WARNINGS=-Wall -Wextra -pedantic -Wno-unused-parameter -Wshadow \
          -Waggregate-return -Wbad-function-cast -Wcast-align -Wcast-qual \
-         -Wfloat-equal -Wformat=2 -Wlogical-op -Wmissing-include-dirs \
+         -Wfloat-equal -Wformat=2 -Wmissing-include-dirs \
          -Wnested-externs -Wpointer-arith -Wconversion -Wno-sign-conversion \
          -Wredundant-decls -Wsequence-point -Wstrict-prototypes -Wswitch -Wundef \
          -Wunused-but-set-parameter -Wwrite-strings
-CFLAGS=-O3
+CFLAGS=-O0 -g3 -DDEBUG
 CFLAGS_DEBUG=-O0 -g3 -DDEBUG
 CFLAGS_SMALL=-Os -ffunction-sections -fdata-sections
 LDFLAGS=
@@ -46,7 +46,11 @@ BIN_PUZZLES=$(addprefix $(BIN_DIR)/, $(PUZZLES))
 
 # build all the puzzles
 .PHONY: all
-all: $(BIN_PUZZLES)
+all: $(PUZZLES)
+
+# build each puzzle (alias for BIN_DIR/puzzle_name)
+.PNONY: $(PUZZLES)
+$(PUZZLES): % : $(BIN_DIR)/%
 
 # rebuild the project
 .PHONY: rebuild
@@ -124,5 +128,5 @@ $(TEST_DIR):
 .PHONY: $(RUN_TESTS)
 $(RUN_TESTS): run_% : $(TESTS)
 	@$(TEST_DIR)/$* \
-	&& printf "`tput bold``tput setaf 2`PASSED %s`tput sgr0`\n" $@ \
-	|| printf "`tput bold``tput setaf 1`FAILED %s`tput sgr0`\n" $@
+	&& printf "`tput bold``tput setaf 2`PASSED %s`tput sgr0`\n" $* \
+	|| printf "`tput bold``tput setaf 1`FAILED %s`tput sgr0`\n" $*

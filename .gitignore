@@ -3,6 +3,9 @@
 /obj
 /tests
 
+# Runtime files
+*.log
+
 # Local misc.
 .DS_Store
 .idea
