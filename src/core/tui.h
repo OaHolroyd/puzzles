@@ -13,6 +13,7 @@
 #include <ncurses.h>
 
 #define KEY_ESC (27)
+#define KEY_DEL (127)
 
 typedef enum BoxStyle {
   BOXROUND,

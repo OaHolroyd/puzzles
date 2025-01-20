@@ -15,20 +15,28 @@
 #define COL_SCOREA (204)
 #define COL_SCOREB (206)
 
+#define COL_INPUT (212)
+
 #define COL_ESCOFF (208)
 #define COL_ESCON (210)
+
+#define EMPTY (' ')
 
 
 /**
  * User interface wrapper struct.
  */
 struct UI {
-  WINDOW *win_tiles; // container for the tiles
+  WINDOW *win_tiles; // window for the tiles
   WINDOW *grid[SIZE]; // grid of tiles
-  int esc_mode; // 0 = normal, 1 = escape
-  WINDOW *win_esc; // container for the escape menu
-
   char selected[SIZE]; // 0 = not selected, 1 = selected
+
+  int esc_mode; // 0 = normal, 1 = escape
+  WINDOW *win_esc; // window for the escape menu
+
+  WINDOW *win_input; // window for the input
+  char input[SIZE]; // input letters
+  int input_index; // index of the input
 };
 
 
@@ -63,6 +71,8 @@ static int ui_setup_colors(void) {
   init_pair(COL_TILEB + 1, 201, 205);
   init_pair(COL_SCOREB + 1, 204, 205);
 
+  init_pair(COL_INPUT, 200, 201);
+
   init_pair(COL_ESCOFF, 204, 201);
   init_pair(COL_ESCON, 201, 200);
 
@@ -80,8 +90,13 @@ static int ui_setup(struct UI *ui) {
   ui->esc_mode = 0;
   ui->win_tiles = NULL;
   ui->win_esc = NULL;
+  ui->win_input = NULL;
+  ui->input_index = 0;
   memset(ui->grid, 0, sizeof(ui->grid));
   memset(ui->selected, 0, sizeof(ui->selected));
+  for (int i = 0; i < SIZE; i++) {
+    ui->input[i] = EMPTY;
+  }
 
   /* get the dimensions of the standard screen */
   unsigned int rows, cols;
@@ -108,6 +123,11 @@ static int ui_setup(struct UI *ui) {
   tui_grid(ui->grid, 1, SIZE, CELL_HEIGHT, CELL_WIDTH, 2, 1);
   LOG("INFO: created grid window");
 
+  /* input window beneath the tiles */
+  ui->win_input = win_create(3, SIZE + 4, CELL_HEIGHT + 2, 1);
+  LOG("INFO: created input window");
+  win_border(ui->win_input, BOXLIGHT, A_NORMAL);
+
   return 0;
 }
 
@@ -127,6 +147,9 @@ static void ui_destroy(struct UI *ui) {
   }
 
   win_destroy(ui->win_tiles);
+  ui->win_tiles = NULL;
+
+  win_destroy(ui->win_input);
   ui->win_tiles = NULL;
 }
 
@@ -180,6 +203,19 @@ static void ui_render(const struct UI *ui, const struct Game *game) {
 
     wrefresh(tile);
   }
+
+  /* update intput window */
+  for (int i = 0; i < SIZE; i++) {
+    wmove(ui->win_input, 1, 2 + i);
+    waddch(ui->win_input, ui->input[i]);
+
+    // default color
+    wchgat(ui->win_input, 1, A_NORMAL, COL_INPUT, NULL); // score color
+  }
+  // highlight cursor
+  mvwchgat(ui->win_input, 1, 2 + ui->input_index, 1, A_REVERSE, COL_INPUT, NULL); // score color
+
+  wrefresh(ui->win_input);
 }
 
 
@@ -216,6 +252,93 @@ static void shuffle_tiles(struct UI *ui, struct Game *game) {
 }
 
 
+/**
+ * Enter a letter into the input buffer if it permitted.
+ *
+ * @param ui The user interface.
+ * @param game The game state.
+ * @param letter The letter to enter.
+ */
+void enter_letter(struct UI *ui, struct Game *game, char letter) {
+  /* check normal letters */
+  for (int i = 0; i < SIZE; i++) {
+    if (game->letters[i] == letter && !ui->selected[i]) {
+      // letter is available in the tiles so add
+      ui->selected[i] = 1;
+      ui->input[ui->input_index] = letter;
+
+      // move to the next input index if possible
+      if (ui->input_index < SIZE - 1) {
+        ui->input_index++;
+      }
+
+      return;
+    }
+  }
+
+  /* if not found, check for blanks */
+  for (int i = 0; i < SIZE; i++) {
+    if (game->letters[i] == ' ' && !ui->selected[i]) {
+      // letter is available in the tiles so add
+      ui->selected[i] = 1;
+      ui->input[ui->input_index] = letter;
+
+      // move to the next input index if possible
+      if (ui->input_index < SIZE - 1) {
+        ui->input_index++;
+      }
+
+      return;
+    }
+  }
+}
+
+
+/**
+ * Remove a letter from the input buffer.
+ *
+ * @param ui The user interface.
+ * @param game The game state.
+ */
+void backspace(struct UI *ui, struct Game *game) {
+  char ch = ui->input[ui->input_index];
+
+  // can't delete if there is no letter under the index
+  if (ch == EMPTY) {
+    if (ui->input_index > 0) {
+      ui->input_index--;
+    }
+    return;
+  }
+
+  // unselect the deleted letter
+  int is_blank = 1;
+  for (int i = 0; i < SIZE; i++) {
+    if (game->letters[i] == ch && ui->selected[i]) {
+      ui->selected[i] = 0;
+      is_blank = 0;
+      break;
+    }
+  }
+
+  // handle the case that the letter used was a blank
+  if (is_blank) {
+    for (int i = 0; i < SIZE; i++) {
+      if (game->letters[i] == ' ' && ui->selected[i]) {
+        ui->selected[i] = 0;
+        break;
+      }
+    }
+  }
+
+  // remove it from the inputs
+  ui->input[ui->input_index] = EMPTY;
+  if (ui->input_index > 0) {
+    ui->input_index--;
+  }
+}
+
+
 int main(int argc, char const *argv[]) {
   /* set up logging */
   log_start("tileset.log");
@@ -237,14 +360,14 @@ int main(int argc, char const *argv[]) {
   }
 
   // use an unimportant plane for key handling
-  tui_keypad(ui.grid[0]); // enable extra keyboard input (arrow keys etc.)
+  tui_keypad(ui.win_input); // enable extra keyboard input (arrow keys etc.)
 
   /* render the screen before starting the game */
   ui_render(&ui, &game);
 
   /* game loop */
   while (1) {
-    const int key = wgetch(ui.grid[0]);
+    const int key = wgetch(ui.win_input);
     LOG("INFO: key pressed: %d [%c, %s]", key, key, nc_keystr(key));
 
     if (key == KEY_ESC) {
@@ -274,11 +397,24 @@ int main(int argc, char const *argv[]) {
       /* ESC MODE OFF */
       /* handle keypress */
       switch (key) {
-        case KEY_UP: // escape key
-          LOG("INFO: up key pressed");
+        case KEY_LEFT:
+          if (ui.input_index > 0) {
+            ui.input_index--;
+          }
+          break;
+        case KEY_RIGHT:
+          if (ui.input_index < SIZE - 1) {
+            ui.input_index++;
+          }
+          break;
+        case KEY_DEL:
+        case KEY_BACKSPACE:
+          backspace(&ui, &game);
           break;
         default:
-          // do nothing if key is not valid
+          if (key >= 'a' && key <= 'z') {
+            enter_letter(&ui, &game, key);
+          }
           break;
       }
     }
