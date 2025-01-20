@@ -242,7 +242,7 @@ static void ui_render(const struct UI *ui, const struct Game *game) {
     mvwprintw(ui->win_info, 1, 9, "%6s", "turn");
     mvwprintw(ui->win_info, 2, 9, "%6d", game->turn);
   }
-  
+
   /* info window might need game over message */
   if (game->status != PLAYING) {
     if (ui->alignment == 0) {

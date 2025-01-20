@@ -10,6 +10,14 @@
 #define CELL_WIDTH (7)
 #define CELL_HEIGHT (3)
 
+#define COL_TILEA (200)
+#define COL_TILEB (202)
+#define COL_SCOREA (204)
+#define COL_SCOREB (206)
+
+#define COL_ESCOFF (208)
+#define COL_ESCON (210)
+
 
 /**
  * User interface wrapper struct.
@@ -19,6 +27,8 @@ struct UI {
   WINDOW *grid[SIZE]; // grid of tiles
   int esc_mode; // 0 = normal, 1 = escape
   WINDOW *win_esc; // container for the escape menu
+
+  char selected[SIZE]; // 0 = not selected, 1 = selected
 };
 
 
@@ -34,20 +44,27 @@ static int ui_setup_colors(void) {
   }
 
   /* create the colors */
-  init_hex_color(200, 0xFFFFFF); // white
-  init_hex_color(201, 0x000000); // black
-  init_hex_color(202, 0x101010); // dark grey
-  init_hex_color(203, 0x151515); // less dark grey
-  init_hex_color(204, 0x606060); // mid grey
-  init_hex_color(205, 0xEEEEEE); // light grey
+  init_hex_color(200, 0xFFFFFF);
+  init_hex_color(201, 0x000000);
+  init_hex_color(202, 0x101010);
+  init_hex_color(203, 0x151515);
+  init_hex_color(204, 0x606060);
+  init_hex_color(205, 0xEEEEEE);
+  init_hex_color(206, 0xF8F8F8);
 
   /* create the color pairs */
-  init_pair(200, 200, 202); // white on dark grey
-  init_pair(201, 200, 203); // white on less dark grey
-  init_pair(202, 205, 202); // light grey on dark grey
-  init_pair(203, 205, 203); // light grey on less dark grey
-  init_pair(204, 204, 201); // mid grey on black (ESC mode off)
-  init_pair(205, 201, 200); // black on white (ESC mode on)
+  init_pair(COL_TILEA, 200, 202);
+  init_pair(COL_SCOREA, 204, 202);
+  init_pair(COL_TILEA + 1, 201, 206);
+  init_pair(COL_SCOREA + 1, 204, 206);
+
+  init_pair(COL_TILEB, 200, 203);
+  init_pair(COL_SCOREB, 204, 203);
+  init_pair(COL_TILEB + 1, 201, 205);
+  init_pair(COL_SCOREB + 1, 204, 205);
+
+  init_pair(COL_ESCOFF, 204, 201);
+  init_pair(COL_ESCON, 201, 200);
 
   return 0;
 }
@@ -64,12 +81,17 @@ static int ui_setup(struct UI *ui) {
   ui->win_tiles = NULL;
   ui->win_esc = NULL;
   memset(ui->grid, 0, sizeof(ui->grid));
+  memset(ui->selected, 0, sizeof(ui->selected));
 
   /* get the dimensions of the standard screen */
   unsigned int rows, cols;
   getmaxyx(stdscr, rows, cols);
 
   // TODO: check that the terminal is large enough
+  if (cols < CELL_WIDTH * SIZE + 2 || rows < CELL_HEIGHT + 2) {
+    LOG("ERROR: terminal too narrow");
+    return 1;
+  }
 
   /* set up the color pairs for the TUI */
   ui_setup_colors();
@@ -115,12 +137,15 @@ static void ui_destroy(struct UI *ui) {
  * @param ui The user interface.
  * @param game The game state.
  */
-static void ui_render(const struct UI *ui, const struct Game *game) {
+static void ui_render(struct UI *ui, const struct Game *game) {
+  ui->selected[2] = 1;
+  ui->selected[3] = 1;
+
   /* set the escape menu */
   if (ui->esc_mode) {
-    wbkgd(ui->win_esc, COLOR_PAIR(205));
+    wbkgd(ui->win_esc, COLOR_PAIR(COL_ESCON));
   } else {
-    wbkgd(ui->win_esc, COLOR_PAIR(204));
+    wbkgd(ui->win_esc, COLOR_PAIR(COL_ESCOFF));
   }
   werase(ui->win_esc);
   mvwprintw(ui->win_esc, 0, 0, "ESC: [R]eset [S]huffle [Q]uit");
@@ -130,18 +155,32 @@ static void ui_render(const struct UI *ui, const struct Game *game) {
   for (int i = 0; i < SIZE; i++) {
     WINDOW *tile = ui->grid[i];
 
-    /* alternate cell colors */
-    // TODO: maybe color by score?
+    /* highlight selected tiles */
+    short modifier = ui->selected[i] ? 1 : 0;
+
+    /* alternate cell colors to distinguish between cells */
     if (i % 2) {
-      wbkgd(tile, COLOR_PAIR(200));
+      wbkgd(tile, COLOR_PAIR(COL_TILEA + modifier)); // main tile color
     } else {
-      wbkgd(tile, COLOR_PAIR(201));
+      wbkgd(tile, COLOR_PAIR(COL_TILEB + modifier)); // main tile color
     }
     werase(tile);
 
     /* display the character and the points value */
-    mvwprintw(tile, 1, (CELL_WIDTH - 1) / 2, "%c", toupper(game->letters[i]));
-    mvwprintw(tile, 2, (CELL_WIDTH - 1) / 2, "%d", score_letter_tileset(game->letters[i]));
+    mvwprintw(tile, 1, 3, "%c", toupper(game->letters[i]));
+    mvwprintw(tile, 2, 4, "%2d", score_letter_tileset(game->letters[i]));
+
+    /* adjust the score color */
+    if (i % 2) {
+      // short color_pair = COLOR_PAIR(COL_SCOREA + modifier);
+      short color_pair = COL_SCOREA + modifier;
+      mvwchgat(tile, 2, 4, 2, A_NORMAL, color_pair, NULL); // score color
+    } else {
+      // short color_pair = COLOR_PAIR(COL_SCOREB + modifier);
+      short color_pair = COL_SCOREB + modifier;
+      mvwchgat(tile, 2, 4, 2, A_NORMAL, color_pair, NULL); // score color
+    }
+
     wrefresh(tile);
   }
 }
