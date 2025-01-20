@@ -137,10 +137,7 @@ static void ui_destroy(struct UI *ui) {
  * @param ui The user interface.
  * @param game The game state.
  */
-static void ui_render(struct UI *ui, const struct Game *game) {
-  ui->selected[2] = 1;
-  ui->selected[3] = 1;
-
+static void ui_render(const struct UI *ui, const struct Game *game) {
   /* set the escape menu */
   if (ui->esc_mode) {
     wbkgd(ui->win_esc, COLOR_PAIR(COL_ESCON));
@@ -182,6 +179,39 @@ static void ui_render(struct UI *ui, const struct Game *game) {
     }
 
     wrefresh(tile);
+  }
+}
+
+
+/**
+ * Shuffle the tiles in the game state, maintaining the selected tiles.
+ *
+ * @param ui The user interface.
+ * @param game The game state.
+ */
+static void shuffle_tiles(struct UI *ui, struct Game *game) {
+  /* record the currently selected tiles */
+  char selected[SIZE];
+  memset(selected, 0, sizeof(selected));
+  int k = 0;
+  for (int i = 0; i < SIZE; i++) {
+    if (ui->selected[i]) {
+      selected[k++] = game->letters[i];
+    }
+  }
+
+  shuffle_tileset(game);
+
+  /* restore the selected tiles */
+  memset(ui->selected, 0, sizeof(ui->selected));
+  for (int i = 0; i < k; i++) {
+    char letter = selected[i];
+    for (int j = 0; j < SIZE; j++) {
+      if (game->letters[j] == letter && !ui->selected[j]) {
+        ui->selected[j] = 1;
+        break;
+      }
+    }
   }
 }
 
@@ -234,7 +264,7 @@ int main(int argc, char const *argv[]) {
           break;
         case 'S':
         case 's':
-          shuffle_tileset(&game);
+          shuffle_tiles(&ui, &game);
           break;
         default:
           // do nothing if key is not valid
