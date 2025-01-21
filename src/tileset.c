@@ -253,61 +253,16 @@ static void shuffle_tiles(struct UI *ui, struct Game *game) {
 
 
 /**
- * Enter a letter into the input buffer if it permitted.
- *
- * @param ui The user interface.
- * @param game The game state.
- * @param letter The letter to enter.
- */
-void enter_letter(struct UI *ui, struct Game *game, char letter) {
-  /* check normal letters */
-  for (int i = 0; i < SIZE; i++) {
-    if (game->letters[i] == letter && !ui->selected[i]) {
-      // letter is available in the tiles so add
-      ui->selected[i] = 1;
-      ui->input[ui->input_index] = letter;
-
-      // move to the next input index if possible
-      if (ui->input_index < SIZE - 1) {
-        ui->input_index++;
-      }
-
-      return;
-    }
-  }
-
-  /* if not found, check for blanks */
-  for (int i = 0; i < SIZE; i++) {
-    if (game->letters[i] == ' ' && !ui->selected[i]) {
-      // letter is available in the tiles so add
-      ui->selected[i] = 1;
-      ui->input[ui->input_index] = letter;
-
-      // move to the next input index if possible
-      if (ui->input_index < SIZE - 1) {
-        ui->input_index++;
-      }
-
-      return;
-    }
-  }
-}
-
-
-/**
- * Remove a letter from the input buffer.
+ * Remove the letter under the cursor.
  *
  * @param ui The user interface.
  * @param game The game state.
  */
-void backspace(struct UI *ui, struct Game *game) {
+void delete_index(struct UI *ui, struct Game *game) {
   char ch = ui->input[ui->input_index];
 
   // can't delete if there is no letter under the index
   if (ch == EMPTY) {
-    if (ui->input_index > 0) {
-      ui->input_index--;
-    }
     return;
   }
 
@@ -333,8 +288,49 @@ void backspace(struct UI *ui, struct Game *game) {
 
   // remove it from the inputs
   ui->input[ui->input_index] = EMPTY;
-  if (ui->input_index > 0) {
-    ui->input_index--;
+}
+
+
+/**
+ * Enter a letter into the input buffer if it permitted.
+ *
+ * @param ui The user interface.
+ * @param game The game state.
+ * @param letter The letter to enter.
+ */
+void enter_letter(struct UI *ui, struct Game *game, char letter) {
+  /* check normal letters */
+  for (int i = 0; i < SIZE; i++) {
+    if (game->letters[i] == letter && !ui->selected[i]) {
+      // letter is available in the tiles so add
+      delete_index(ui, game); // remove the letter if it is already in the input
+      ui->selected[i] = 1;
+      ui->input[ui->input_index] = letter;
+
+      // move to the next input index if possible
+      if (ui->input_index < SIZE - 1) {
+        ui->input_index++;
+      }
+
+      return;
+    }
+  }
+
+  /* if not found, check for blanks */
+  for (int i = 0; i < SIZE; i++) {
+    if (game->letters[i] == ' ' && !ui->selected[i]) {
+      // letter is available in the tiles so add
+      delete_index(ui, game); // remove the letter if it is already in the input
+      ui->selected[i] = 1;
+      ui->input[ui->input_index] = letter;
+
+      // move to the next input index if possible
+      if (ui->input_index < SIZE - 1) {
+        ui->input_index++;
+      }
+
+      return;
+    }
   }
 }
 
@@ -397,6 +393,9 @@ int main(int argc, char const *argv[]) {
       /* ESC MODE OFF */
       /* handle keypress */
       switch (key) {
+        case KEY_ENTER:
+          // submit_word(&ui, &game);
+          break;
         case KEY_LEFT:
           if (ui.input_index > 0) {
             ui.input_index--;
@@ -409,7 +408,10 @@ int main(int argc, char const *argv[]) {
           break;
         case KEY_DEL:
         case KEY_BACKSPACE:
-          backspace(&ui, &game);
+          delete_index(&ui, &game);
+          if (ui.input_index > 0) {
+            ui.input_index--;
+          }
           break;
         default:
           if (key >= 'a' && key <= 'z') {
