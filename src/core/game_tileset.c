@@ -78,12 +78,11 @@ char score_word_tileset(const struct Game *game, const char *word) {
       }
     }
 
-    // if the letter was not availabel, try to use a blank
+    // if the letter was not available, try to use a blank (which carries no point value)
     if (!was_found) {
-      for (int j = 0; j < SIZE; ++j) {
+      for (int j = 0; j < SIZE; j++) {
         if (game->letters[j] == ' ' && !used[j]) {
           used[j] = 1;
-          score += score_letter_tileset(word[i]);
           was_found = 1;
           break;
         }
@@ -133,15 +132,15 @@ void reset_tileset(struct Game *game) {
 void shuffle_tileset(struct Game *game) {
   // Perform a Fisher-Yates shuffle
   for (char i = 0; i < SIZE - 1; i++) {
-    char j = i + rand() / (RAND_MAX / (SIZE - i) + 1);
-    char tmp = game->letters[j];
+    const char j = i + rand() / (RAND_MAX / (SIZE - i) + 1);
+    const char tmp = game->letters[j];
     game->letters[j] = game->letters[i];
     game->letters[i] = tmp;
   }
 }
 
 
-int submit_word_tileset(struct Game *game, const char *word) {
+int submit_word_tileset(const struct Game *game, const char *word) {
   // try and find the word in the dictionary
   const int num_words = NUM_EN_GB;
   for (int i = 0; i < num_words; ++i) {

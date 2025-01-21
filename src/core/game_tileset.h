@@ -45,7 +45,7 @@ void shuffle_tileset(struct Game *game);
  * @param word The word to submit.
  * @return the score value of the word if the word is correct, 0 if the word is incorrect.
  */
-int submit_word_tileset(struct Game *game, const char *word);
+int submit_word_tileset(const struct Game *game, const char *word);
 
 
 /**

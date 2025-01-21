@@ -63,7 +63,62 @@ int main(void) {
 
   /* check that words are scored correctly */
   SUBTEST("score word") {
-    REQUIRE(1 == 0);
+    struct Game game;
+    reset_tileset(&game);
+
+    /* no blanks */
+    memcpy(game.letters, "abcdefg", 7);
+    REQUIRE(score_word_tileset(&game, "bed") == 6); // valid real word
+    REQUIRE(score_word_tileset(&game, "beg") == 6); // valid real word
+    REQUIRE(score_word_tileset(&game, "abd") == 6); // words don't need to be correct, just valid letter combinations
+    REQUIRE(score_word_tileset(&game, "bez") == 0); // invalid letter combination
+    REQUIRE(score_word_tileset(&game, "bqz") == 0); // invalid letter combination
+
+    /* one blank */
+    memcpy(game.letters, "abcdef ", 7);
+    REQUIRE(score_word_tileset(&game, "bed") == 6); // valid real word
+    REQUIRE(score_word_tileset(&game, "beg") == 4); // valid real word (now uses blank)
+    REQUIRE(score_word_tileset(&game, "abd") == 6); // words don't need to be correct, just valid letter combinations
+    REQUIRE(score_word_tileset(&game, "bez") == 4); // valid letter combination using the blank
+    REQUIRE(score_word_tileset(&game, "bqz") == 0); // invalid letter combination
+
+    /* two blanks */
+    memcpy(game.letters, "abcde  ", 7);
+    REQUIRE(score_word_tileset(&game, "bed") == 6); // valid real word
+    REQUIRE(score_word_tileset(&game, "beg") == 4); // valid real word (now uses blank)
+    REQUIRE(score_word_tileset(&game, "abd") == 6); // words don't need to be correct, just valid letter combinations
+    REQUIRE(score_word_tileset(&game, "bez") == 4); // valid letter combination using the blank
+    REQUIRE(score_word_tileset(&game, "bqz") == 3); // valid letter combination using both blanks
+  }
+
+  /* check that words are submitted correctly */
+  SUBTEST("submit word") {
+    struct Game game;
+    reset_tileset(&game);
+
+    /* no blanks */
+    memcpy(game.letters, "abcdefg", 7);
+    REQUIRE(submit_word_tileset(&game, "bed") == 6); // valid real word
+    REQUIRE(submit_word_tileset(&game, "beg") == 6); // valid real word
+    REQUIRE(submit_word_tileset(&game, "abd") == 0); // valid letters, not a word
+    REQUIRE(submit_word_tileset(&game, "gaze") == 0); // real word, invalid letters
+    REQUIRE(submit_word_tileset(&game, "quad") == 0); // real word, invalid letters
+
+    /* one blank */
+    memcpy(game.letters, "abcde g", 7);
+    REQUIRE(submit_word_tileset(&game, "bed") == 6); // valid real word
+    REQUIRE(submit_word_tileset(&game, "beg") == 6); // valid real word
+    REQUIRE(submit_word_tileset(&game, "abd") == 0); // valid letters, not a word
+    REQUIRE(submit_word_tileset(&game, "gaze") == 4); // real word, valid letters (using a blank)
+    REQUIRE(submit_word_tileset(&game, "quad") == 0); // real word, invalid letters
+
+    /* two blanks */
+    memcpy(game.letters, "abcde  ", 7);
+    REQUIRE(submit_word_tileset(&game, "bed") == 6); // valid real word
+    REQUIRE(submit_word_tileset(&game, "beg") == 4); // valid real word (using a blank)
+    REQUIRE(submit_word_tileset(&game, "abd") == 0); // valid letters, not a word
+    REQUIRE(submit_word_tileset(&game, "gaze") == 2); // real word, valid letters (using two blanks)
+    REQUIRE(submit_word_tileset(&game, "quad") == 3); // real word, valid letters (using two blanks)
   }
 
   END_TEST();

@@ -13,7 +13,7 @@ int ERR_COUNT;
 #define REQUIRE(cond) { int l = __LINE__;                                             \
     if (!(cond)) {                                                                    \
       ERR_COUNT++;                                                                    \
-      fprintf(stderr, "%s:%s (line %d) FAILED\n", TEST_NAME, SUBTEST_NAME, l);        \
+      fprintf(stderr, "  %s:%s (line %d) FAILED\n", TEST_NAME, SUBTEST_NAME, l);      \
     } else {                                                                          \
       /* fprintf(stderr, "%s (line %d) PASSED\n", TEST_NAME, l); */                   \
     }                                                                                 \
