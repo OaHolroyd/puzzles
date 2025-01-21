@@ -37,6 +37,12 @@ struct UI {
   WINDOW *win_input; // window for the input
   char input[SIZE]; // input letters
   int input_index; // index of the input
+
+  WINDOW *win_score; // window for the score
+  char score; // current score
+  char best_word[SIZE]; // best word found so far
+  int has_submitted; // 0 = not submitted, 1 = submitted (coorect), -1 = submitted (incorrect)
+  char submitted_word[SIZE + 1]; // submitted word (with space for null-terminator)
 };
 
 
@@ -92,8 +98,13 @@ static int ui_setup(struct UI *ui) {
   ui->win_esc = NULL;
   ui->win_input = NULL;
   ui->input_index = 0;
+  ui->win_score = NULL;
+  ui->has_submitted = 0;
+  ui->score = 0;
   memset(ui->grid, 0, sizeof(ui->grid));
   memset(ui->selected, 0, sizeof(ui->selected));
+  memset(ui->best_word, 0, sizeof(ui->best_word));
+  memset(ui->submitted_word, 0, sizeof(ui->submitted_word));
   for (int i = 0; i < SIZE; i++) {
     ui->input[i] = EMPTY;
   }
@@ -128,6 +139,10 @@ static int ui_setup(struct UI *ui) {
   LOG("INFO: created input window");
   win_border(ui->win_input, BOXLIGHT, A_NORMAL);
 
+  /* score window right of the input */
+  ui->win_score = win_create(3, SIZE * CELL_WIDTH - SIZE - 4, CELL_HEIGHT + 2, 5 + SIZE);
+  LOG("INFO: created score window");
+
   return 0;
 }
 
@@ -151,6 +166,9 @@ static void ui_destroy(struct UI *ui) {
 
   win_destroy(ui->win_input);
   ui->win_tiles = NULL;
+
+  win_destroy(ui->win_score);
+  ui->win_score = NULL;
 }
 
 
@@ -204,17 +222,38 @@ static void ui_render(const struct UI *ui, const struct Game *game) {
     wrefresh(tile);
   }
 
+  /* update the most recent submission */
+  if (ui->has_submitted == 0) {
+    // clear the most recent submission text
+    // TODO: should get the width of the window programatically
+    for (int i = 0; i < SIZE * CELL_WIDTH - SIZE - 4; ++i) {
+      mvwaddch(ui->win_score, 0, i, ' ');
+    }
+  } else if (ui->has_submitted == 1) {
+    // display the most recent submission text
+    mvwprintw(ui->win_score, 0, 1, "CORRECT: %s (%d)", ui->submitted_word, score_word_tileset(game, ui->submitted_word));
+  } else if (ui->has_submitted == -1) {
+    // display the most recent submission text
+    mvwprintw(ui->win_score, 0, 1, "INCORRECT: %s", ui->submitted_word);
+  }
+
+  /* update the high-score */
+  if (ui->score > 0) {
+    mvwprintw(ui->win_score, 1, 1, "BEST: %s (%d)", ui->best_word, ui->score);
+  }
+
+  wrefresh(ui->win_score);
+
   /* update intput window */
   for (int i = 0; i < SIZE; i++) {
     wmove(ui->win_input, 1, 2 + i);
-    waddch(ui->win_input, ui->input[i]);
+    waddch(ui->win_input, toupper(ui->input[i]));
 
     // default color
     wchgat(ui->win_input, 1, A_NORMAL, COL_INPUT, NULL); // score color
   }
   // highlight cursor
   mvwchgat(ui->win_input, 1, 2 + ui->input_index, 1, A_REVERSE, COL_INPUT, NULL); // score color
-
   wrefresh(ui->win_input);
 }
 
@@ -258,7 +297,7 @@ static void shuffle_tiles(struct UI *ui, struct Game *game) {
  * @param ui The user interface.
  * @param game The game state.
  */
-void delete_index(struct UI *ui, struct Game *game) {
+static void delete_index(struct UI *ui, struct Game *game) {
   char ch = ui->input[ui->input_index];
 
   // can't delete if there is no letter under the index
@@ -298,7 +337,7 @@ void delete_index(struct UI *ui, struct Game *game) {
  * @param game The game state.
  * @param letter The letter to enter.
  */
-void enter_letter(struct UI *ui, struct Game *game, char letter) {
+static void enter_letter(struct UI *ui, struct Game *game, char letter) {
   /* check normal letters */
   for (int i = 0; i < SIZE; i++) {
     if (game->letters[i] == letter && !ui->selected[i]) {
@@ -335,6 +374,41 @@ void enter_letter(struct UI *ui, struct Game *game, char letter) {
 }
 
 
+/**
+ * Submit the word in the input buffer.
+ *
+ * @param ui The user interface.
+ * @param game The game state.
+ */
+static void submit_word(struct UI *ui, struct Game *game) {
+  /* extract the word from the input */
+  memset(ui->submitted_word, 0, sizeof(ui->submitted_word));
+  int k = 0;
+  for (int i = 0; i < SIZE; i++) {
+    if (ui->input[i] != EMPTY) {
+      ui->submitted_word[k++] = ui->input[i];
+    }
+  }
+
+  int score = submit_word_tileset(game, ui->submitted_word);
+  if (score <= 0) {
+    /* incorrect word */
+    LOG("INFO: incorrect word: %s", ui->submitted_word);
+    ui->has_submitted = -1;
+    return;
+  }
+
+  /* correct word */
+  LOG("INFO: correct word: %s", ui->submitted_word);
+  ui->has_submitted = 1;
+
+  if (score > ui->score) {
+    ui->score = score;
+    memcpy(ui->best_word, ui->submitted_word, SIZE);
+  }
+}
+
+
 int main(int argc, char const *argv[]) {
   /* set up logging */
   log_start("tileset.log");
@@ -364,6 +438,10 @@ int main(int argc, char const *argv[]) {
   /* game loop */
   while (1) {
     const int key = wgetch(ui.win_input);
+    if (key == ERR) {
+      continue;
+    }
+
     LOG("INFO: key pressed: %d [%c, %s]", key, key, nc_keystr(key));
 
     if (key == KEY_ESC) {
@@ -379,6 +457,7 @@ int main(int argc, char const *argv[]) {
       switch (key) {
         case 'R':
         case 'r':
+          memset(ui.selected, 0, SIZE);
           reset_tileset(&game);
           break;
         case 'S':
@@ -393,8 +472,9 @@ int main(int argc, char const *argv[]) {
       /* ESC MODE OFF */
       /* handle keypress */
       switch (key) {
+        case '\n':
         case KEY_ENTER:
-          // submit_word(&ui, &game);
+          submit_word(&ui, &game);
           break;
         case KEY_LEFT:
           if (ui.input_index > 0) {
@@ -423,6 +503,7 @@ int main(int argc, char const *argv[]) {
 
     /* render the screen */
     ui_render(&ui, &game);
+    ui.has_submitted = 0; // reset submition flag
   }
 
   /* clean up resources */

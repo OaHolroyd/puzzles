@@ -6,6 +6,9 @@
 
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>
+
+#include "src/wordlists/en-gb.h"
 
 
 // Check that the alphabet is contiguous
@@ -49,20 +52,50 @@ static const char SCORES[26] = {1, 3, 3, 2, 1, 4, 2, 4, 1, 8, 5, 1, 3, 1, 1, 3, 
 //                              a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p,  q, r, s, t, u, v, w, x, y,  z
 
 
-/**
- * Get the score of a letter.
- *
- * Note that this assumes lowercase letters, and contiguous values of the chars 'a' to 'z'.
- *
- * @param letter The letter to get the score of.
- * @return The score of the letter.
- */
 char score_letter_tileset(const char letter) {
   if (letter == ' ') {
     return 0;
   }
 
   return SCORES[letter - 'a'];
+}
+
+
+char score_word_tileset(const struct Game *game, const char *word) {
+  char used[SIZE];
+  memset(used, 0, SIZE);
+
+  char score = 0;
+  for (int i = 0; word[i] != '\0'; i++) {
+    // check that the letter is available
+    int was_found = 0;
+    for (int j = 0; j < SIZE; j++) {
+      if (word[i] == game->letters[j] && !used[j]) {
+        used[j] = 1;
+        score += score_letter_tileset(word[i]);
+        was_found = 1;
+        break;
+      }
+    }
+
+    // if the letter was not availabel, try to use a blank
+    if (!was_found) {
+      for (int j = 0; j < SIZE; ++j) {
+        if (game->letters[j] == ' ' && !used[j]) {
+          used[j] = 1;
+          score += score_letter_tileset(word[i]);
+          was_found = 1;
+          break;
+        }
+      }
+    }
+
+    // if the letter was not found then the word is not valid
+    if (!was_found) {
+      return 0;
+    }
+  }
+  return score;
 }
 
 
@@ -105,4 +138,17 @@ void shuffle_tileset(struct Game *game) {
     game->letters[j] = game->letters[i];
     game->letters[i] = tmp;
   }
+}
+
+
+int submit_word_tileset(struct Game *game, const char *word) {
+  // try and find the word in the dictionary
+  const int num_words = NUM_EN_GB;
+  for (int i = 0; i < num_words; ++i) {
+    if (!strcmp(word, EN_GB[i])) {
+      return score_word_tileset(game, word);
+    }
+  }
+
+  return 0;
 }

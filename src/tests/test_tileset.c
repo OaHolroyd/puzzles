@@ -61,5 +61,10 @@ int main(void) {
     }
   }
 
+  /* check that words are scored correctly */
+  SUBTEST("score word") {
+    REQUIRE(1 == 0);
+  }
+
   END_TEST();
 }
