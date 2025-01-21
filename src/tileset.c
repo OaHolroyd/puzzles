@@ -39,8 +39,6 @@ struct UI {
   int input_index; // index of the input
 
   WINDOW *win_score; // window for the score
-  char score; // current score
-  char best_word[SIZE]; // best word found so far
   int has_submitted; // 0 = not submitted, 1 = submitted (coorect), -1 = submitted (incorrect)
   char submitted_word[SIZE + 1]; // submitted word (with space for null-terminator)
 };
@@ -100,10 +98,8 @@ static int ui_setup(struct UI *ui) {
   ui->input_index = 0;
   ui->win_score = NULL;
   ui->has_submitted = 0;
-  ui->score = 0;
   memset(ui->grid, 0, sizeof(ui->grid));
   memset(ui->selected, 0, sizeof(ui->selected));
-  memset(ui->best_word, 0, sizeof(ui->best_word));
   memset(ui->submitted_word, 0, sizeof(ui->submitted_word));
   for (int i = 0; i < SIZE; i++) {
     ui->input[i] = EMPTY;
@@ -238,8 +234,8 @@ static void ui_render(const struct UI *ui, const struct Game *game) {
   }
 
   /* update the high-score */
-  if (ui->score > 0) {
-    mvwprintw(ui->win_score, 1, 1, "BEST: %s (%d)", ui->best_word, ui->score);
+  if (game->score > 0) {
+    mvwprintw(ui->win_score, 1, 1, "BEST: %s (%d)", game->word, game->score);
   }
 
   wrefresh(ui->win_score);
@@ -401,11 +397,6 @@ static void submit_word(struct UI *ui, struct Game *game) {
   /* correct word */
   LOG("INFO: correct word: %s", ui->submitted_word);
   ui->has_submitted = 1;
-
-  if (score > ui->score) {
-    ui->score = score;
-    memcpy(ui->best_word, ui->submitted_word, SIZE);
-  }
 }
 
 

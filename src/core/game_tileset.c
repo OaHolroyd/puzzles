@@ -140,12 +140,20 @@ void shuffle_tileset(struct Game *game) {
 }
 
 
-int submit_word_tileset(const struct Game *game, const char *word) {
+int submit_word_tileset(struct Game *game, const char *word) {
   // try and find the word in the dictionary
   const int num_words = NUM_EN_GB;
   for (int i = 0; i < num_words; ++i) {
     if (!strcmp(word, EN_GB[i])) {
-      return score_word_tileset(game, word);
+      // word found
+      char score = score_word_tileset(game, word);
+
+      // check if the word is better than the current best
+      if (score > game->score) {
+        game->score = score;
+        strcpy(game->word, word);
+      }
+      return score;
     }
   }
 
