@@ -121,6 +121,46 @@ int main(void) {
     REQUIRE(submit_word_tileset(&game, "quad") == 3); // real word, valid letters (using two blanks)
   }
 
+  SUBTEST("find blanks") {
+    struct Game game;
+    reset_tileset(&game, 0);
+    memcpy(game.letters, "quit  q", 7);
+
+    // no blanks needed
+    {
+      char blanks[SIZE];
+      find_blanks_tileset(&game, "quit", blanks);
+      for (int i = 0; i < SIZE; i++) {
+        REQUIRE(blanks[i] == 0);
+      }
+    }
+
+    // one blank required
+    {
+      char blanks[SIZE];
+      find_blanks_tileset(&game, "quite", blanks);
+      REQUIRE(blanks[4] == 1);
+      for (int i = 0; i < SIZE; i++) {
+        if (i != 4) {
+          REQUIRE(blanks[i] == 0);
+        }
+      }
+    }
+
+    // two blanks required
+    {
+      char blanks[SIZE];
+      find_blanks_tileset(&game, "quiter", blanks);
+      REQUIRE(blanks[4] == 1);
+      REQUIRE(blanks[5] == 1);
+      for (int i = 0; i < SIZE; i++) {
+        if (i != 4 && i != 5) {
+          REQUIRE(blanks[i] == 0);
+        }
+      }
+    }
+  }
+
   /* check that the top scoring words are found correctly */
   SUBTEST("top words") {
     struct Game game;

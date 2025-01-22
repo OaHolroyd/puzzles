@@ -84,4 +84,14 @@ int score_word_tileset(const struct Game *game, const char *word);
 void top_words_tileset(struct Game *game);
 
 
+/**
+ * Find the blanks in a word.
+ *
+ * @param game The game state.
+ * @param word The word to find the blanks in.
+ * @param blanks When the function returns, this will be 1 for a blank, 0 for a normal letter.
+ */
+void find_blanks_tileset(struct Game *game, const char *word, char *blanks);
+
+
 #endif //GAME_TILESET_H

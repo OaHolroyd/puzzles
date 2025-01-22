@@ -102,6 +102,7 @@ static void depth_first_search(
       newPrefixBlank[len + 1] = '\0';
 
       /* previous letters might also have been a blank, so replace them */
+      // TODO: could use find_blanks_tileset here
       for (int j = 0; j < len; j++) {
         int is_blank = 1;
         for (int p = 0; p < SIZE; p++) {
@@ -323,6 +324,41 @@ void top_words_tileset(struct Game *game) {
     if (gap == 1) {
       // when gap == 1 then the sort is complete
       break;
+    }
+  }
+}
+
+
+void find_blanks_tileset(struct Game *game, const char *word, char *blanks) {
+  char used[SIZE] = {0};
+  memset(blanks, 0, SIZE);
+
+  for (int i = 0; i < SIZE; i++) {
+    if (!word[i]) {
+      // stop at the end of the word
+      return;
+    }
+
+    /* try and find the letter in the tileset */
+    int found = 0;
+    for (int j = 0; j < SIZE; j++) {
+      if (game->letters[j] == word[i] && !used[j]) {
+        used[j] = 1;
+        found = 1;
+        break;
+      }
+    }
+    if (found) {
+      continue;
+    }
+
+    /* if the letter was not found, try to use a blank */
+    for (int j = 0; j < SIZE; j++) {
+      if (game->letters[j] == BLANK && !used[j]) {
+        used[j] = 1;
+        blanks[i] = 1;
+        break;
+      }
     }
   }
 }
