@@ -11,7 +11,7 @@ int main(void) {
   /* check that a shuffle always keeps the letters the same */
   SUBTEST("shuffle") {
     struct Game game;
-    reset_tileset(&game);
+    reset_tileset(&game, 0);
 
     char letters[SIZE + 1];
     strcpy(letters, game.letters); // store the original letters
@@ -40,10 +40,10 @@ int main(void) {
   /* check that reseting never draws the same tile twice */
   SUBTEST("reset") {
     struct Game game;
-    reset_tileset(&game);
+    reset_tileset(&game, 0);
 
     for (int i = 0; i < 500000; i++) {
-      reset_tileset(&game);
+      reset_tileset(&game, 0);
 
       /* check that there's only one j, k, q, x, or z */
       const char jkqxz[5] = {'j', 'k', 'q', 'x', 'z'};
@@ -64,7 +64,7 @@ int main(void) {
   /* check that words are scored correctly */
   SUBTEST("score word") {
     struct Game game;
-    reset_tileset(&game);
+    reset_tileset(&game, 0);
 
     /* no blanks */
     memcpy(game.letters, "abcdefg", 7);
@@ -94,7 +94,7 @@ int main(void) {
   /* check that words are submitted correctly */
   SUBTEST("submit word") {
     struct Game game;
-    reset_tileset(&game);
+    reset_tileset(&game, 0);
 
     /* no blanks */
     memcpy(game.letters, "abcdefg", 7);
@@ -119,6 +119,48 @@ int main(void) {
     REQUIRE(submit_word_tileset(&game, "abd") == 0); // valid letters, not a word
     REQUIRE(submit_word_tileset(&game, "gaze") == 2); // real word, valid letters (using two blanks)
     REQUIRE(submit_word_tileset(&game, "quad") == 3); // real word, valid letters (using two blanks)
+  }
+
+  /* check that the top scoring words are found correctly */
+  SUBTEST("top words") {
+    struct Game game;
+    reset_tileset(&game, 0);
+    memcpy(game.letters, "quitqqq", 7);
+    top_words_tileset(&game);
+
+    char best_words[STORE][SIZE] = {"quit", "qi", "tui", "it", "ti", "ut"};
+    for (int i = 0; i < STORE; i++) {
+      REQUIRE(strcmp(game.top_words[i], best_words[i]) == 0);
+      REQUIRE(game.top_scores[i] == score_word_tileset(&game, best_words[i]));
+    }
+  }
+
+  /* check that the top scoring words are found correctly, even with a blank */
+  SUBTEST("top words (blanks)") {
+    struct Game game;
+    reset_tileset(&game, 0);
+    memcpy(game.letters, "qqqqq t", 7);
+    top_words_tileset(&game);
+
+    char best_words[STORE][SIZE] = {"qat", "qi", "at", "et", "it", "st", "ta", "te", "ti", "to"};
+    for (int i = 0; i < STORE; i++) {
+      REQUIRE(strcmp(game.top_words[i], best_words[i]) == 0);
+      REQUIRE(game.top_scores[i] == score_word_tileset(&game, best_words[i]));
+    }
+  }
+
+  /* check that the top scoring words are found correctly, even with two blank */
+  SUBTEST("top words (blanks)") {
+    struct Game game;
+    reset_tileset(&game, 0);
+    memcpy(game.letters, "qqqq  q", 7);
+    top_words_tileset(&game);
+
+    char best_words[STORE][SIZE] = {"qat", "qi", "qis", "qua", "suq"};
+    for (int i = 0; i < STORE; i++) {
+      REQUIRE(strcmp(game.top_words[i], best_words[i]) == 0);
+      REQUIRE(game.top_scores[i] == score_word_tileset(&game, best_words[i]));
+    }
   }
 
   END_TEST();

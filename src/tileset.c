@@ -407,7 +407,7 @@ int main(int argc, char const *argv[]) {
   /* set up a tileset game state */
   srand(time(NULL));
   struct Game game;
-  reset_tileset(&game);
+  reset_tileset(&game, 1);
 
   /* start up the TUI */
   tui_start();
@@ -449,7 +449,7 @@ int main(int argc, char const *argv[]) {
         case 'R':
         case 'r':
           memset(ui.selected, 0, SIZE);
-          reset_tileset(&game);
+          reset_tileset(&game, 1);
           break;
         case 'S':
         case 's':

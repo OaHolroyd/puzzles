@@ -6,9 +6,11 @@
 
 #include <stdlib.h>
 #include <assert.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "src/wordlists/en-gb.h"
+#include "src/core/trie.h"
 
 
 // Check that the alphabet is contiguous
@@ -43,13 +45,121 @@ static const char LETTERS[100] = {
   'x',
   'y', 'y',
   'z',
-  ' ', ' ',
+  BLANK, BLANK,
 };
 
 
 // Scores for each letter
 static const char SCORES[26] = {1, 3, 3, 2, 1, 4, 2, 4, 1, 8, 5, 1, 3, 1, 1, 3, 10, 1, 1, 1, 1, 4, 4, 8, 4, 10,};
 //                              a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p,  q, r, s, t, u, v, w, x, y,  z
+
+
+/**
+ * Depth-first search of the trie, finding the best words.
+ *
+ * @param root the root of the trie
+ * @param game the game state
+ * @param prefix the current prefix
+ * @param used the letters that have been used
+ * @param len the length of the prefix
+ */
+static void depth_first_search(
+  Trie *root, struct Game *game, const char prefix[SIZE + 1], const char used[SIZE + 1], int len
+) {
+  for (int i = 0; i < SIZE; i++) {
+    if (used[i]) {
+      continue;
+    }
+
+    /* set up the possible letters the letters[i] could be */
+    char alphabet[26] = {
+      'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+      'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+    };
+    if (game->letters[i] != BLANK) {
+      alphabet[0] = game->letters[i];
+      alphabet[1] = '\0';
+    }
+
+    for (int k = 0; k < 26; k++) {
+      if (alphabet[k] == '\0') {
+        break;
+      }
+
+      /* duplicate the input arguments */
+      char newPrefix[SIZE + 1] = {0};
+      char newPrefixBlank[SIZE + 1] = {0}; // newPrefix using the blank tile (if it exists)
+      char newUsed[SIZE + 1] = {0};
+      memcpy(newPrefix, prefix, len);
+      memcpy(newPrefixBlank, prefix, len);
+      memcpy(newUsed, used, SIZE);
+
+      /* add the letter to the end of the prefix */
+      newUsed[i] = 1;
+      newPrefix[len] = alphabet[k]; // newPrefix can never have a blank in it since we use it to check the dictionary
+      newPrefix[len + 1] = '\0';
+      newPrefixBlank[len] = game->letters[i]; // newPrefixBlank
+      newPrefixBlank[len + 1] = '\0';
+
+      /* previous letters might also have been a blank, so replace them */
+      for (int j = 0; j < len; j++) {
+        int is_blank = 1;
+        for (int p = 0; p < SIZE; p++) {
+          if (used[p] && game->letters[p] == newPrefix[j]) {
+            is_blank = 0;
+            break;
+          }
+        }
+
+        if (is_blank) {
+          newPrefixBlank[j] = BLANK;
+        }
+      }
+
+      /* check if this prefix is a real word */
+      if (trie_contains(root, newPrefix, 0)) {
+        /* don't bother adding words that are already in the lists */
+        int is_new = 1;
+        for (int j = 0; j < STORE; j++) {
+          if (!strncmp(game->top_words[j], newPrefix, SIZE)) {
+            is_new = 0;
+            break;
+          }
+        }
+
+        if (is_new) {
+          /* find the worst of the current best words */
+          int worst_score = 10000000;
+          int worst_index = 0;
+          for (int j = 0; j < STORE; j++) {
+            if (
+              game->top_scores[j] < worst_score ||
+              (game->top_scores[j] == worst_score && strncmp(game->top_words[j], game->top_words[worst_index], SIZE) > 0)
+            ) {
+              worst_score = game->top_scores[j];
+              worst_index = j;
+            }
+          }
+
+          /* replace it with this one if it is better (or the same and lower alphabetically) */
+          const char score = score_word_tileset(game, newPrefixBlank);
+          if (
+            score > worst_score ||
+            (score == worst_score && strncmp(newPrefix, game->top_words[worst_index], SIZE) < 0)
+          ) {
+            game->top_scores[worst_index] = score;
+            memcpy(game->top_words[worst_index], newPrefix, SIZE);
+          }
+        }
+      } else if (!trie_contains(root, newPrefix, 1)) {
+        continue;
+      }
+
+      /* try to continue with more letters since this is a valid prefix */
+      depth_first_search(root, game, newPrefix, newUsed, len + 1);
+    }
+  }
+}
 
 
 char score_letter_tileset(const char letter) {
@@ -61,7 +171,7 @@ char score_letter_tileset(const char letter) {
 }
 
 
-char score_word_tileset(const struct Game *game, const char *word) {
+int score_word_tileset(const struct Game *game, const char *word) {
   char used[SIZE];
   memset(used, 0, SIZE);
 
@@ -98,8 +208,12 @@ char score_word_tileset(const struct Game *game, const char *word) {
 }
 
 
-void reset_tileset(struct Game *game) {
+void reset_tileset(struct Game *game, int get_top_words) {
   game->score = 0;
+  memset(game->top_scores, 0, STORE * sizeof(int));
+  for (int i = 0; i < STORE; i++) {
+    memset(game->top_words[i], 0, SIZE + 1);
+  }
 
   /* pick random indices into the LETTERS array, not allowing replacement */
   for (char i = 0; i < SIZE; i++) {
@@ -125,7 +239,9 @@ void reset_tileset(struct Game *game) {
   }
   game->letters[SIZE] = '\0'; // ensure the string is null-terminated
 
-  // TODO: find top words/scores (this requires a prefix-tree of the entire dictionary)
+  if (get_top_words) {
+    top_words_tileset(game);
+  }
 }
 
 
@@ -158,4 +274,55 @@ int submit_word_tileset(struct Game *game, const char *word) {
   }
 
   return 0;
+}
+
+
+void top_words_tileset(struct Game *game) {
+  /* construct a prefix tree containing all of the words in the dictionary */
+  Trie root = trie_root();
+  for (int i = 0; i < NUM_EN_GB; i++) {
+    trie_insert(&root, EN_GB[i]);
+  }
+
+  /* do a depth first search of the trie to find the best words */
+  char prefix[SIZE + 1] = {0};
+  char used[SIZE + 1] = {0};
+  depth_first_search(&root, game, prefix, used, 0);
+
+  trie_free(&root);
+
+  /* sort the words from best to worst */
+  // use shell sort
+  int k = 0;
+  while (++k) {
+    int gap = 2 * (STORE >> (k + 1)) + 1;
+
+    for (int i = gap; i < STORE; i++) {
+      for (int j = i - gap; j >= 0; j -= gap) {
+        // determine if the current word is better than the next (by score then alphabetically)
+        int is_better = game->top_scores[j] < game->top_scores[j + gap];
+        if (game->top_scores[j] == game->top_scores[j + gap]) {
+          is_better = strcmp(game->top_words[j], game->top_words[j + gap]) > 0;
+        }
+
+        if (is_better) {
+          // swap the scores
+          int tmp_score = game->top_scores[j];
+          game->top_scores[j] = game->top_scores[j + gap];
+          game->top_scores[j + gap] = tmp_score;
+
+          // swap the words
+          char tmp_word[SIZE + 1];
+          strcpy(tmp_word, game->top_words[j]);
+          strcpy(game->top_words[j], game->top_words[j + gap]);
+          strcpy(game->top_words[j + gap], tmp_word);
+        }
+      }
+    }
+
+    if (gap == 1) {
+      // when gap == 1 then the sort is complete
+      break;
+    }
+  }
 }

@@ -7,6 +7,8 @@
 
 #define SIZE (7) // the number of letters available
 #define STORE (10) // the number of top words to store
+#define BLANK (' ') // the blank tile
+
 
 /**
  * Game state.
@@ -25,9 +27,12 @@ struct Game {
 /**
  * Reset the game state, choosing a random set of letters.
  *
+ * Since the depth first search to find the best words is expensive, this can be disabled.
+ *
  * @param game The game state.
+ * @param get_top_words Whether to get the top words (0 to skip, nonzero to perform).
  */
-void reset_tileset(struct Game *game);
+void reset_tileset(struct Game *game, int get_top_words);
 
 
 /**
@@ -68,7 +73,15 @@ char score_letter_tileset(char letter);
  * @param word The word to get the score of.
  * @return The score of the word, or 0 if the word is invalid.
  */
-char score_word_tileset(const struct Game *game, const char *word);
+int score_word_tileset(const struct Game *game, const char *word);
+
+
+/**
+ * Perform a depth first search to find the best words.
+ *
+ * @param game The game state.
+ */
+void top_words_tileset(struct Game *game);
 
 
 #endif //GAME_TILESET_H
