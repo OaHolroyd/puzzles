@@ -4,6 +4,9 @@ on:
   pull_request:
     branches: [ "main" ]
 
+env:
+  TERM: linux
+
 jobs:
   check-ubuntu:
     runs-on: ubuntu-latest
