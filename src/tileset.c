@@ -527,7 +527,7 @@ int main(int argc, char const *argv[]) {
         case 'G':
         case 'g':
           reveal_tileset(&game);
-        break;
+          break;
         default:
           // do nothing if key is not valid
           break;
