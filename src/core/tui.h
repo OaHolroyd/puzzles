@@ -12,6 +12,9 @@
 
 #include <ncurses.h>
 
+#define KEY_ESC (27)
+#define KEY_DEL (127)
+
 typedef enum BoxStyle {
   BOXROUND,
   BOXLIGHT,
@@ -39,6 +42,14 @@ void tui_end(void);
  * @return -1 if color is not supported, the number of available color pairs otherwise.
  */
 int tui_start_color(void);
+
+
+/**
+ * Enable the keypad for a window, allowing for extra keyboard input (including the ESC key).
+ *
+ * @param win The window to enable the keypad for.
+ */
+void tui_keypad(WINDOW *win);
 
 
 /**

@@ -57,7 +57,7 @@ struct Game {
  *
  * @param game The game state.
  */
-void game_reset(struct Game *game);
+void reset_2048(struct Game *game);
 
 
 /**
@@ -67,7 +67,7 @@ void game_reset(struct Game *game);
  * @param move The direction to move the tiles.
  * @return The result of the move.
  */
-Result game_move(struct Game *game, Move move);
+Result move_2048(struct Game *game, Move move);
 
 
 /**
@@ -77,7 +77,7 @@ Result game_move(struct Game *game, Move move);
  * @param move The direction to move the tiles.
  * @return The result of the move.
  */
-Result game_turn(struct Game *game, Move move);
+Result turn_2048(struct Game *game, Move move);
 
 
 #endif //GAME_2048_H
