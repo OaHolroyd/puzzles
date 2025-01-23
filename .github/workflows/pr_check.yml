@@ -1,0 +1,31 @@
+name: Check
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  TERM: linux
+
+jobs:
+  check-ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install dependencies
+      run: make
+      
+    - name: Run check
+      run: make check
+  
+  check-macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install dependencies
+      run: make
+      
+    - name: Run check
+      run: make check
