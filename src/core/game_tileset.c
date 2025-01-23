@@ -64,7 +64,7 @@ static const char SCORES[26] = {1, 3, 3, 2, 1, 4, 2, 4, 1, 8, 5, 1, 3, 1, 1, 3, 
  * @param len the length of the prefix
  */
 static void depth_first_search(
-  Trie *root, struct Game *game, const char prefix[SIZE + 1], const char used[SIZE + 1], int len
+  Trie *root, struct Game *game, const char prefix[SIZE + 1], const char used[SIZE + 1], const int len
 ) {
   for (int i = 0; i < SIZE; i++) {
     if (used[i]) {
@@ -102,7 +102,6 @@ static void depth_first_search(
       newPrefixBlank[len + 1] = '\0';
 
       /* previous letters might also have been a blank, so replace them */
-      // TODO: could use find_blanks_tileset here
       for (int j = 0; j < len; j++) {
         int is_blank = 1;
         for (int p = 0; p < SIZE; p++) {
@@ -210,7 +209,7 @@ int score_word_tileset(const struct Game *game, const char *word) {
 }
 
 
-void reset_tileset(struct Game *game, int get_top_words) {
+void reset_tileset(struct Game *game, const int get_top_words) {
   game->score = 0;
   memset(game->top_scores, 0, STORE * sizeof(int));
   memset(game->has_found, 0, STORE * sizeof(int));
@@ -300,8 +299,8 @@ void top_words_tileset(struct Game *game) {
   }
 
   /* do a depth first search of the trie to find the best words */
-  char prefix[SIZE + 1] = {0};
-  char used[SIZE + 1] = {0};
+  const char prefix[SIZE + 1] = {0};
+  const char used[SIZE + 1] = {0};
   depth_first_search(&root, game, prefix, used, 0);
 
   trie_free(&root);
@@ -310,7 +309,7 @@ void top_words_tileset(struct Game *game) {
   // use shell sort
   int k = 0;
   while (++k) {
-    int gap = 2 * (STORE >> (k + 1)) + 1;
+    const int gap = 2 * (STORE >> (k + 1)) + 1;
 
     for (int i = gap; i < STORE; i++) {
       for (int j = i - gap; j >= 0; j -= gap) {
@@ -322,7 +321,7 @@ void top_words_tileset(struct Game *game) {
 
         if (is_better) {
           // swap the scores
-          int tmp_score = game->top_scores[j];
+          const int tmp_score = game->top_scores[j];
           game->top_scores[j] = game->top_scores[j + gap];
           game->top_scores[j + gap] = tmp_score;
 

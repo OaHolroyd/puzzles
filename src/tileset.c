@@ -194,7 +194,7 @@ static void ui_destroy(struct UI *ui) {
  * @param x The x position.
  * @param index The index of the target word.
  */
-static void render_target_word(const struct UI *ui, const struct Game *game, int y, int x, int index) {
+static void render_target_word(const struct UI *ui, const struct Game *game, const int y, const int x, const int index) {
   WINDOW *win = ui->win_target;
   const int score = game->top_scores[index];
   const char *word = game->top_words[index];
@@ -242,7 +242,7 @@ static void ui_render(const struct UI *ui, const struct Game *game) {
     WINDOW *tile = ui->grid[i];
 
     /* highlight selected tiles */
-    short modifier = ui->selected[i] ? 1 : 0;
+    const short modifier = ui->selected[i] ? 1 : 0;
 
     /* alternate cell colors to distinguish between cells */
     if (i % 2) {
@@ -259,11 +259,11 @@ static void ui_render(const struct UI *ui, const struct Game *game) {
     /* adjust the score color */
     if (i % 2) {
       // short color_pair = COLOR_PAIR(COL_SCOREA + modifier);
-      short color_pair = COL_SCOREA + modifier;
+      const short color_pair = COL_SCOREA + modifier;
       mvwchgat(tile, 2, 4, 2, A_NORMAL, color_pair, NULL); // score color
     } else {
       // short color_pair = COLOR_PAIR(COL_SCOREB + modifier);
-      short color_pair = COL_SCOREB + modifier;
+      const short color_pair = COL_SCOREB + modifier;
       mvwchgat(tile, 2, 4, 2, A_NORMAL, color_pair, NULL); // score color
     }
 
@@ -275,7 +275,6 @@ static void ui_render(const struct UI *ui, const struct Game *game) {
   werase(ui->win_score);
   if (ui->has_submitted == 0) {
     // clear the most recent submission text
-    // TODO: should get the width of the window programatically
     for (int i = 0; i < SIZE * CELL_WIDTH - SIZE - 4; ++i) {
       mvwaddch(ui->win_score, 0, i, ' ');
     }
@@ -345,7 +344,7 @@ static void shuffle_tiles(struct UI *ui, struct Game *game) {
   /* restore the selected tiles */
   memset(ui->selected, 0, sizeof(ui->selected));
   for (int i = 0; i < k; i++) {
-    char letter = selected[i];
+    const char letter = selected[i];
     for (int j = 0; j < SIZE; j++) {
       if (game->letters[j] == letter && !ui->selected[j]) {
         ui->selected[j] = 1;
@@ -362,8 +361,8 @@ static void shuffle_tiles(struct UI *ui, struct Game *game) {
  * @param ui The user interface.
  * @param game The game state.
  */
-static void delete_index(struct UI *ui, struct Game *game) {
-  char ch = ui->input[ui->input_index];
+static void delete_index(struct UI *ui, const struct Game *game) {
+  const char ch = ui->input[ui->input_index];
 
   // can't delete if there is no letter under the index
   if (ch == EMPTY) {
@@ -402,7 +401,7 @@ static void delete_index(struct UI *ui, struct Game *game) {
  * @param game The game state.
  * @param letter The letter to enter.
  */
-static void enter_letter(struct UI *ui, struct Game *game, char letter) {
+static void enter_letter(struct UI *ui, const struct Game *game, const char letter) {
   /* check normal letters */
   for (int i = 0; i < SIZE; i++) {
     if (game->letters[i] == letter && !ui->selected[i]) {
@@ -455,7 +454,7 @@ static void submit_word(struct UI *ui, struct Game *game) {
     }
   }
 
-  int score = submit_word_tileset(game, ui->submitted_word);
+  const int score = submit_word_tileset(game, ui->submitted_word);
   if (score <= 0) {
     /* incorrect word */
     LOG("INFO: incorrect word: %s", ui->submitted_word);

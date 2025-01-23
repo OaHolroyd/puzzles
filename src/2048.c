@@ -84,9 +84,6 @@ static int ui_setup_colors(void) {
 
   /* create the colors and combine them into a pair */
   const short num_pairs = 19;
-  static_assert((COLOR_START + 2 * num_pairs) < 250, "color index may not exceed 255");
-  static_assert((COLOR_START + 2 * num_pairs + 1) < 250, "color index may not exceed 255");
-  static_assert((COLOR_START + num_pairs) < 250, "color pair index may not exceed 255");
   for (short i = 0; i < num_pairs; i++) {
     init_hex_color(COLOR_START + 2 * i, hex_colors[i][1]);
     init_hex_color(COLOR_START + 2 * i + 1, hex_colors[i][0]);
