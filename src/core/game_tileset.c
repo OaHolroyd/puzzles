@@ -135,7 +135,8 @@ static void depth_first_search(
           for (int j = 0; j < STORE; j++) {
             if (
               game->top_scores[j] < worst_score ||
-              (game->top_scores[j] == worst_score && strncmp(game->top_words[j], game->top_words[worst_index], SIZE) > 0)
+              (game->top_scores[j] == worst_score && strncmp(game->top_words[j], game->top_words[worst_index], SIZE) >
+               0)
             ) {
               worst_score = game->top_scores[j];
               worst_index = j;
@@ -164,7 +165,7 @@ static void depth_first_search(
 
 
 char score_letter_tileset(const char letter) {
-  if (letter == ' ') {
+  if (letter == BLANK) {
     return 0;
   }
 
@@ -192,7 +193,7 @@ int score_word_tileset(const struct Game *game, const char *word) {
     // if the letter was not available, try to use a blank (which carries no point value)
     if (!was_found) {
       for (int j = 0; j < SIZE; j++) {
-        if (game->letters[j] == ' ' && !used[j]) {
+        if (game->letters[j] == BLANK && !used[j]) {
           used[j] = 1;
           was_found = 1;
           break;
@@ -212,6 +213,7 @@ int score_word_tileset(const struct Game *game, const char *word) {
 void reset_tileset(struct Game *game, int get_top_words) {
   game->score = 0;
   memset(game->top_scores, 0, STORE * sizeof(int));
+  memset(game->has_found, 0, STORE * sizeof(int));
   for (int i = 0; i < STORE; i++) {
     memset(game->top_words[i], 0, SIZE + 1);
   }
@@ -258,23 +260,35 @@ void shuffle_tileset(struct Game *game) {
 
 
 int submit_word_tileset(struct Game *game, const char *word) {
-  // try and find the word in the dictionary
+  int score = 0;
+
+  /* try and find the word in the dictionary */
   const int num_words = NUM_EN_GB;
   for (int i = 0; i < num_words; ++i) {
     if (!strcmp(word, EN_GB[i])) {
       // word found
-      char score = score_word_tileset(game, word);
+      score = score_word_tileset(game, word);
 
       // check if the word is better than the current best
       if (score > game->score) {
         game->score = score;
         strcpy(game->word, word);
       }
-      return score;
+      break;
     }
   }
 
-  return 0;
+  /* if the word was found, see if it matches any of the top words */
+  if (score > 0) {
+    for (int i = 0; i < STORE; i++) {
+      if (!strncmp(game->top_words[i], word, SIZE)) {
+        game->has_found[i] = 1;
+        break;
+      }
+    }
+  }
+
+  return score;
 }
 
 
@@ -329,7 +343,7 @@ void top_words_tileset(struct Game *game) {
 }
 
 
-void find_blanks_tileset(struct Game *game, const char *word, char *blanks) {
+void find_blanks_tileset(const struct Game *game, const char *word, char *blanks) {
   char used[SIZE] = {0};
   memset(blanks, 0, SIZE);
 
@@ -360,5 +374,12 @@ void find_blanks_tileset(struct Game *game, const char *word, char *blanks) {
         break;
       }
     }
+  }
+}
+
+
+void reveal_tileset(struct Game *game) {
+  for (int i = 0; i < STORE; i++) {
+    game->has_found[i] = 1;
   }
 }

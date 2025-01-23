@@ -20,6 +20,10 @@
 #define COL_ESCOFF (208)
 #define COL_ESCON (210)
 
+#define COL_HIDE (214)
+#define COL_SHOW (215)
+#define COL_SHOWBLANK (216)
+
 #define EMPTY (' ')
 
 
@@ -41,6 +45,8 @@ struct UI {
   WINDOW *win_score; // window for the score
   int has_submitted; // 0 = not submitted, 1 = submitted (coorect), -1 = submitted (incorrect)
   char submitted_word[SIZE + 1]; // submitted word (with space for null-terminator)
+
+  WINDOW *win_target; // window with the target words
 };
 
 
@@ -65,20 +71,24 @@ static int ui_setup_colors(void) {
   init_hex_color(206, 0xF8F8F8);
 
   /* create the color pairs */
-  init_pair(COL_TILEA, 200, 202);
-  init_pair(COL_SCOREA, 204, 202);
-  init_pair(COL_TILEA + 1, 201, 206);
-  init_pair(COL_SCOREA + 1, 204, 206);
+  init_pair(COL_TILEA, 201, 206);
+  init_pair(COL_SCOREA, 204, 206);
+  init_pair(COL_TILEA + 1, 200, 202);
+  init_pair(COL_SCOREA + 1, 204, 202);
 
-  init_pair(COL_TILEB, 200, 203);
-  init_pair(COL_SCOREB, 204, 203);
-  init_pair(COL_TILEB + 1, 201, 205);
-  init_pair(COL_SCOREB + 1, 204, 205);
+  init_pair(COL_TILEB, 201, 205);
+  init_pair(COL_SCOREB, 204, 205);
+  init_pair(COL_TILEB + 1, 200, 203);
+  init_pair(COL_SCOREB + 1, 204, 203);
 
   init_pair(COL_INPUT, 200, 201);
 
   init_pair(COL_ESCOFF, 204, 201);
   init_pair(COL_ESCON, 201, 200);
+
+  init_pair(COL_HIDE, 201, 201);
+  init_pair(COL_SHOW, 200, 201);
+  init_pair(COL_SHOWBLANK, 204, 201);
 
   return 0;
 }
@@ -107,11 +117,11 @@ static int ui_setup(struct UI *ui) {
 
   /* get the dimensions of the standard screen */
   unsigned int rows, cols;
-  getmaxyx(stdscr, rows, cols);
+  getmaxyx(stdscr, rows, cols);;
 
-  // TODO: check that the terminal is large enough
-  if (cols < CELL_WIDTH * SIZE + 2 || rows < CELL_HEIGHT + 2) {
-    LOG("ERROR: terminal too narrow");
+  /* check that the terminal is large enough */
+  if (cols < CELL_WIDTH * SIZE + 2 || rows < CELL_HEIGHT + 2 + 3 + (STORE + 1) / 2) {
+    LOG("ERROR: terminal too small");
     return 1;
   }
 
@@ -139,6 +149,10 @@ static int ui_setup(struct UI *ui) {
   ui->win_score = win_create(3, SIZE * CELL_WIDTH - SIZE - 4, CELL_HEIGHT + 2, 5 + SIZE);
   LOG("INFO: created score window");
 
+  /* target window beneath the score/intput */
+  ui->win_target = win_create((STORE + 1) / 2, (SIZE + 4) * 2 + 2, CELL_HEIGHT + 5, 1);
+  LOG("INFO: created target window");
+
   return 0;
 }
 
@@ -165,6 +179,43 @@ static void ui_destroy(struct UI *ui) {
 
   win_destroy(ui->win_score);
   ui->win_score = NULL;
+
+  win_destroy(ui->win_target);
+  ui->win_target = NULL;
+}
+
+
+/**
+ * Render a target word.
+ *
+ * @param ui The user interface.
+ * @param game The game state.
+ * @param y The y position.
+ * @param x The x position.
+ * @param index The index of the target word.
+ */
+static void render_target_word(const struct UI *ui, const struct Game *game, int y, int x, int index) {
+  WINDOW *win = ui->win_target;
+  const int score = game->top_scores[index];
+  const char *word = game->top_words[index];
+  const int found = game->has_found[index];
+
+  mvwprintw(win, y, x, "%2d: %-7s", score, word);
+
+  if (found) {
+    mvwchgat(win, y, x, 11, A_NORMAL, COL_SHOW, NULL); // show the word
+
+    // highligt any blanks in the word
+    char blanks[SIZE];
+    find_blanks_tileset(game, word, blanks);
+    for (int i = 0; i < SIZE; i++) {
+      if (blanks[i]) {
+        mvwchgat(win, y, x + i + 4, 1, A_NORMAL, COL_SHOWBLANK, NULL); // show the blank
+      }
+    }
+  } else {
+    mvwchgat(win, y, x, 11, A_NORMAL, COL_HIDE, NULL); // hide the word
+  }
 }
 
 
@@ -182,8 +233,9 @@ static void ui_render(const struct UI *ui, const struct Game *game) {
     wbkgd(ui->win_esc, COLOR_PAIR(COL_ESCOFF));
   }
   werase(ui->win_esc);
-  mvwprintw(ui->win_esc, 0, 0, "ESC: [R]eset [S]huffle [Q]uit");
+  mvwprintw(ui->win_esc, 0, 0, "ESC: [R]eset [S]huffle [G]ive up [Q]uit");
   wrefresh(ui->win_esc);
+
 
   /* set the color and text of the tile cells */
   for (int i = 0; i < SIZE; i++) {
@@ -218,7 +270,9 @@ static void ui_render(const struct UI *ui, const struct Game *game) {
     wrefresh(tile);
   }
 
+
   /* update the most recent submission */
+  werase(ui->win_score);
   if (ui->has_submitted == 0) {
     // clear the most recent submission text
     // TODO: should get the width of the window programatically
@@ -227,7 +281,9 @@ static void ui_render(const struct UI *ui, const struct Game *game) {
     }
   } else if (ui->has_submitted == 1) {
     // display the most recent submission text
-    mvwprintw(ui->win_score, 0, 1, "CORRECT: %s (%d)", ui->submitted_word, score_word_tileset(game, ui->submitted_word));
+    mvwprintw(
+      ui->win_score, 0, 1, "CORRECT: %s (%d)", ui->submitted_word, score_word_tileset(game, ui->submitted_word)
+    );
   } else if (ui->has_submitted == -1) {
     // display the most recent submission text
     mvwprintw(ui->win_score, 0, 1, "INCORRECT: %s", ui->submitted_word);
@@ -239,6 +295,19 @@ static void ui_render(const struct UI *ui, const struct Game *game) {
   }
 
   wrefresh(ui->win_score);
+
+
+  /* update the target words */
+  const int half_store = (STORE + 1) / 2;
+  for (int i = 0; i < half_store; i++) {
+    render_target_word(ui, game, i, 1, i);
+
+    if (i + half_store < STORE) {
+      render_target_word(ui, game, i, 13, i + half_store);
+    }
+  }
+  wrefresh(ui->win_target);
+
 
   /* update intput window */
   for (int i = 0; i < SIZE; i++) {
@@ -314,7 +383,7 @@ static void delete_index(struct UI *ui, struct Game *game) {
   // handle the case that the letter used was a blank
   if (is_blank) {
     for (int i = 0; i < SIZE; i++) {
-      if (game->letters[i] == ' ' && ui->selected[i]) {
+      if (game->letters[i] == BLANK && ui->selected[i]) {
         ui->selected[i] = 0;
         break;
       }
@@ -353,7 +422,7 @@ static void enter_letter(struct UI *ui, struct Game *game, char letter) {
 
   /* if not found, check for blanks */
   for (int i = 0; i < SIZE; i++) {
-    if (game->letters[i] == ' ' && !ui->selected[i]) {
+    if (game->letters[i] == BLANK && !ui->selected[i]) {
       // letter is available in the tiles so add
       delete_index(ui, game); // remove the letter if it is already in the input
       ui->selected[i] = 1;
@@ -455,6 +524,10 @@ int main(int argc, char const *argv[]) {
         case 's':
           shuffle_tiles(&ui, &game);
           break;
+        case 'G':
+        case 'g':
+          reveal_tileset(&game);
+        break;
         default:
           // do nothing if key is not valid
           break;

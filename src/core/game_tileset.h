@@ -21,6 +21,7 @@ struct Game {
 
   char top_words[STORE][SIZE + 1]; // best available words (always null-terminated)
   int top_scores[STORE]; // scores of the best available words
+  int has_found[STORE]; // 0 = not found, 1 = found
 };
 
 
@@ -91,7 +92,15 @@ void top_words_tileset(struct Game *game);
  * @param word The word to find the blanks in.
  * @param blanks When the function returns, this will be 1 for a blank, 0 for a normal letter.
  */
-void find_blanks_tileset(struct Game *game, const char *word, char *blanks);
+void find_blanks_tileset(const struct Game *game, const char *word, char *blanks);
+
+
+/**
+ * Reveal all of the top words.
+ *
+ * @param game The game state.
+ */
+void reveal_tileset(struct Game *game);
 
 
 #endif //GAME_TILESET_H
