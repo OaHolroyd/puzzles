@@ -222,7 +222,6 @@ const char *nc_keystr(int key) {
     case KEY_UNDO: return "KEY_UNDO"; /* undo key */
     case KEY_MOUSE: return "KEY_MOUSE"; /* Mouse event has occurred */
     case KEY_RESIZE: return "KEY_RESIZE"; /* Terminal resize event */
-    case KEY_EVENT: return "KEY_EVENT"; /* We were interrupted by an event */
     default: return "unknown";
   }
 }

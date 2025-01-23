@@ -19,8 +19,8 @@ LDFLAGS=
 LDFLAGS_SMALL=-Wl,-dead_strip
 
 # libraries
-INCLUDES=
-LIBS=-lncurses
+INCLUDES=-I.
+LIBS=`pkg-config ncursesw --libs`
 
 # directories
 SRC_DIR=./src
