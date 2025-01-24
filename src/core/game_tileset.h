@@ -31,9 +31,11 @@ struct Game {
  * Since the depth first search to find the best words is expensive, this can be disabled.
  *
  * @param game The game state.
+ * @param seed The seed to use for the random letters.
  * @param get_top_words Whether to get the top words (0 to skip, nonzero to perform).
+ * @return 0 on success, non-zero on failure.
  */
-void reset_tileset(struct Game *game, int get_top_words);
+int reset_tileset(struct Game *game, const char *seed, int get_top_words);
 
 
 /**

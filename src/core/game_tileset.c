@@ -55,6 +55,50 @@ static const char SCORES[26] = {1, 3, 3, 2, 1, 4, 2, 4, 1, 8, 5, 1, 3, 1, 1, 3, 
 
 
 /**
+ * Check if a seed is valid.
+ *
+ * The seed must be a string representing a 7 two-digit hex numbers between 0 and 99 (inclusive).
+ *
+ * @param seed The seed to check.
+ * @return 0 on success, non-zero on failure.
+ */
+int parse_seed(char *letters, const char *seed) {
+  // must have length 14, or 16 with leading "0x"
+  long hex_seed;
+  char *endptr;
+  if (strnlen(seed, 17) == 16 && seed[0] == '0' && seed[1] == 'x') {
+    hex_seed = strtol(seed, &endptr, 0);
+  } else if (strnlen(seed, 17) != 14) {
+    return 1; // incorrect length
+  } else {
+    hex_seed = strtol(seed, &endptr, 16);
+  }
+
+  if (endptr[0] != '\0') {
+    return 2; // invalid hex characters
+  }
+
+  // extract the 7 hex numbers
+  for (int i = 0; i < SIZE; i++) {
+    const int value = (hex_seed >> (8 * (SIZE - i - 1))) & 0xFF;
+    if (value > 99) {
+      return 3; // out of bounds
+    }
+
+    for (int j = 0; j < i; j++) {
+      if (letters[j] == value) {
+        return 4; // repeated index
+      }
+    }
+
+    letters[i] = value;
+  }
+
+  return 0;
+}
+
+
+/**
  * Depth-first search of the trie, finding the best words.
  *
  * @param root the root of the trie
@@ -209,7 +253,7 @@ int score_word_tileset(const struct Game *game, const char *word) {
 }
 
 
-void reset_tileset(struct Game *game, const int get_top_words) {
+int reset_tileset(struct Game *game, const char *seed, const int get_top_words) {
   game->score = 0;
   memset(game->top_scores, 0, STORE * sizeof(int));
   memset(game->has_found, 0, STORE * sizeof(int));
@@ -217,22 +261,29 @@ void reset_tileset(struct Game *game, const int get_top_words) {
     memset(game->top_words[i], 0, SIZE + 1);
   }
 
-  /* pick random indices into the LETTERS array, not allowing replacement */
-  for (char i = 0; i < SIZE; i++) {
-    int redraw;
-    do {
-      // get a random index
-      game->letters[i] = rand() % 100;
+  if (seed) {
+    /* set indices into the letters array from the seed */
+    if (parse_seed(game->letters, seed)) {
+      return 1;
+    }
+  } else {
+    /* pick random indices into the LETTERS array, not allowing replacement */
+    for (char i = 0; i < SIZE; i++) {
+      int redraw;
+      do {
+        // get a random index
+        game->letters[i] = rand() % 100;
 
-      // check if the letter is already in the shuffle
-      redraw = 0;
-      for (char j = 0; j < i; j++) {
-        if (game->letters[i] == game->letters[j]) {
-          redraw = 1;
-          break;
+        // check if the letter is already in the shuffle
+        redraw = 0;
+        for (char j = 0; j < i; j++) {
+          if (game->letters[i] == game->letters[j]) {
+            redraw = 1;
+            break;
+          }
         }
-      }
-    } while (redraw);
+      } while (redraw);
+    }
   }
 
   /* convert indices into letters */
@@ -244,6 +295,8 @@ void reset_tileset(struct Game *game, const int get_top_words) {
   if (get_top_words) {
     top_words_tileset(game);
   }
+
+  return 0;
 }
 
 

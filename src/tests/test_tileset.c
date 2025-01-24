@@ -11,7 +11,7 @@ int main(void) {
   /* check that a shuffle always keeps the letters the same */
   SUBTEST("shuffle") {
     struct Game game;
-    reset_tileset(&game, 0);
+    reset_tileset(&game, NULL, 0);
 
     char letters[SIZE + 1];
     strcpy(letters, game.letters); // store the original letters
@@ -37,13 +37,13 @@ int main(void) {
     }
   }
 
-  /* check that reseting never draws the same tile twice */
-  SUBTEST("reset") {
+  /* check that random reseting never draws the same tile twice */
+  SUBTEST("random reset") {
     struct Game game;
-    reset_tileset(&game, 0);
+    reset_tileset(&game, NULL, 0);
 
     for (int i = 0; i < 500000; i++) {
-      reset_tileset(&game, 0);
+      reset_tileset(&game, NULL, 0);
 
       /* check that there's only one j, k, q, x, or z */
       const char jkqxz[5] = {'j', 'k', 'q', 'x', 'z'};
@@ -61,10 +61,33 @@ int main(void) {
     }
   }
 
+  /* check that seeded reseting chooses the tiles correctly */
+  SUBTEST("seeded reset") {
+    struct Game game;
+
+    /* bad seeds */
+    REQUIRE(reset_tileset(&game, "01", 0) != 0); // too short
+    REQUIRE(reset_tileset(&game, "0102030405060708", 0) != 0); // wrong format
+    REQUIRE(reset_tileset(&game, "010203040506070809", 0) != 0); // too long
+    REQUIRE(reset_tileset(&game, "01020304050606", 0) != 0); // repeated value
+    REQUIRE(reset_tileset(&game, "010203040506FF", 0) != 0); // out of bounds
+    REQUIRE(reset_tileset(&game, "010203040506ss", 0) != 0); // not hex
+
+    /* good seeds */
+    REQUIRE(reset_tileset(&game, "01020304050607", 0) == 0);
+    REQUIRE(strcmp(game.letters, "aaaaaaa") == 0);
+
+    REQUIRE(reset_tileset(&game, "0x01020304050607", 0) == 0);
+    REQUIRE(strcmp(game.letters, "aaaaaaa") == 0);
+
+    REQUIRE(reset_tileset(&game, "01020304050663", 0) == 0);
+    REQUIRE(strcmp(game.letters, "aaaaaa ") == 0);
+  }
+
   /* check that words are scored correctly */
   SUBTEST("score word") {
     struct Game game;
-    reset_tileset(&game, 0);
+    reset_tileset(&game, NULL, 0);
 
     /* no blanks */
     memcpy(game.letters, "abcdefg", 7);
@@ -94,7 +117,7 @@ int main(void) {
   /* check that words are submitted correctly */
   SUBTEST("submit word") {
     struct Game game;
-    reset_tileset(&game, 0);
+    reset_tileset(&game, NULL, 0);
 
     /* no blanks */
     memcpy(game.letters, "abcdefg", 7);
@@ -123,7 +146,7 @@ int main(void) {
 
   SUBTEST("find blanks") {
     struct Game game;
-    reset_tileset(&game, 0);
+    reset_tileset(&game, NULL, 0);
     memcpy(game.letters, "quit  q", 7);
 
     // no blanks needed
@@ -164,7 +187,7 @@ int main(void) {
   /* check that the top scoring words are found correctly */
   SUBTEST("top words") {
     struct Game game;
-    reset_tileset(&game, 0);
+    reset_tileset(&game, NULL, 0);
     memcpy(game.letters, "quitqqq", 7);
     top_words_tileset(&game);
 
@@ -178,7 +201,7 @@ int main(void) {
   /* check that the top scoring words are found correctly, even with a blank */
   SUBTEST("top words (blanks)") {
     struct Game game;
-    reset_tileset(&game, 0);
+    reset_tileset(&game, NULL, 0);
     memcpy(game.letters, "qqqqq t", 7);
     top_words_tileset(&game);
 
@@ -192,7 +215,7 @@ int main(void) {
   /* check that the top scoring words are found correctly, even with two blank */
   SUBTEST("top words (blanks)") {
     struct Game game;
-    reset_tileset(&game, 0);
+    reset_tileset(&game, NULL, 0);
     memcpy(game.letters, "qqqq  q", 7);
     top_words_tileset(&game);
 
