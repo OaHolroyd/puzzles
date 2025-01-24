@@ -619,7 +619,7 @@ static void game_loop(struct UI *ui, struct Game *game) {
 }
 
 
-int main(const int argc, char *argv[]) {
+int main(const int argc, char **argv) {
   /* set up logging */
   log_start("tileset.log");
 
