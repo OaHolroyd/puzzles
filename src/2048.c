@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include <string.h>
+#include <getopt.h>
 
 #include "core/logging.h"
 #include "core/tui.h"
@@ -222,7 +223,7 @@ static void ui_render(const struct UI *ui, const struct Game *game) {
         // find length of label
         char text[CELL_WIDTH + 1];
         snprintf(text, CELL_WIDTH, "%d", 1 << value);
-        mvwprintw(cell, 1, (CELL_WIDTH - strlen(text)) / 2, text);
+        mvwprintw(cell, 1, (CELL_WIDTH - (int)strlen(text)) / 2, text);
       }
       wrefresh(cell);
     }
@@ -263,12 +264,69 @@ static void ui_render(const struct UI *ui, const struct Game *game) {
 }
 
 
-int main(int argc, char const *argv[]) {
+/**
+ * Parse the command line arguments.
+ *
+ * @param argc The number of arguments.
+ * @param argv The arguments.
+ * @return -1 for help text, 0 on success, non-zero on failure.
+ */
+static int parse_args(const int argc, char *argv[]) {
+  static struct option long_options[] = {
+    {"help", no_argument, 0, 'h'},
+    {0, 0, 0, 0}
+  };
+
+  const char *help_text = "2048: a sliding-tile game\n"
+      "  -h, --help      Display this help and exit\n"
+      "\n"
+      "  Use the arrow keys to slide the tiles. Merge matching tiles together\n"
+      "  to get the 2048 tile.\n";
+
+  /* parse arguments */
+  int c, opt_index;
+  int bad_option = 0;while ((c = getopt_long(argc, argv, "hs:", long_options, &opt_index)) != -1) {
+    switch (c) {
+      case 'h':
+        fprintf(stderr, "%s", help_text);
+      return -1;
+      case '?':
+        bad_option = 1;
+      break;
+      default:
+        break;
+    }
+  }
+
+  /* check for bad options */
+  if (bad_option) {
+    fprintf(stderr, "\n%s", help_text);
+    return 1;
+  }
+
+  /* check for extra (invalid) arguments */
+  if (optind < argc) {
+    while (optind < argc) {
+      fprintf(stderr, "tileset: invalid extra argument: `%s'\n", argv[optind++]);
+    }
+    fprintf(stderr, "\n%s", help_text);
+    return 2;
+  }
+
+  return 0;
+}
+
+
+int main(const int argc, char **argv) {
   /* set up logging */
   log_start("2048.log");
 
+  if (parse_args(argc, argv)) {
+    return EXIT_FAILURE;
+  }
+
   /* set up a 2048 game state */
-  srand(time(NULL));
+  srand((unsigned int)time(NULL));
   struct Game game;
   reset_2048(&game);
 
@@ -344,5 +402,5 @@ int main(int argc, char const *argv[]) {
   ui_destroy(&ui);
   tui_end();
 
-  return 0;
+  return EXIT_SUCCESS;
 }

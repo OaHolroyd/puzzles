@@ -58,7 +58,7 @@ void trie_free(Trie *root) {
 int trie_insert(Trie *root, const char *word) {
   Trie *node = root;
 
-  for (int i = 0; i < strlen(word); i++) {
+  for (int i = 0; i < (int)strlen(word); i++) {
     const char ch = word[i];
 
     /* add a child to the node if it doesn't araedy have one for ch */
@@ -86,7 +86,7 @@ int trie_insert(Trie *root, const char *word) {
 int trie_contains(Trie *root, const char *word, int prefix) {
   Trie *node = root;
 
-  for (int i = 0; i < strlen(word); i++) {
+  for (int i = 0; i < (int)strlen(word); i++) {
     const char ch = word[i];
 
     /* only keep going if the correct child node exists */

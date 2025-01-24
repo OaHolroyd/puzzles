@@ -22,7 +22,7 @@ typedef struct Trie {
 } Trie;
 
 
-#define TRIE_IDX(c) ((c) - 'a') // convert a lowercase letter to an index
+#define TRIE_IDX(c) ((unsigned char)((c) - 'a')) // convert a lowercase letter to an index
 
 
 /**

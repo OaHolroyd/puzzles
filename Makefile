@@ -11,7 +11,7 @@ WARNINGS=-Wall -Wextra -pedantic -Wno-unused-parameter -Wshadow \
          -Wfloat-equal -Wformat=2 -Wmissing-include-dirs \
          -Wnested-externs -Wpointer-arith -Wconversion -Wno-sign-conversion \
          -Wredundant-decls -Wsequence-point -Wstrict-prototypes -Wswitch -Wundef \
-         -Wunused-but-set-parameter -Wwrite-strings -Wvla
+         -Wunused-but-set-parameter -Wwrite-strings -Wvla -Wno-gnu-zero-variadic-macro-arguments
 CFLAGS=-O0 -g3 -DDEBUG
 CFLAGS_DEBUG=-O0 -g3 -DDEBUG
 CFLAGS_SMALL=-Os -ffunction-sections -fdata-sections

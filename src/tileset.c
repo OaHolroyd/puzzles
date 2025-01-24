@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <getopt.h>
 
 #include "core/game_tileset.h"
 #include "core/logging.h"
@@ -194,7 +195,8 @@ static void ui_destroy(struct UI *ui) {
  * @param x The x position.
  * @param index The index of the target word.
  */
-static void render_target_word(const struct UI *ui, const struct Game *game, const int y, const int x, const int index) {
+static void render_target_word(const struct UI *ui, const struct Game *game, const int y, const int x,
+                               const int index) {
   WINDOW *win = ui->win_target;
   const int score = game->top_scores[index];
   const char *word = game->top_words[index];
@@ -468,35 +470,81 @@ static void submit_word(struct UI *ui, struct Game *game) {
 }
 
 
-int main(int argc, char const *argv[]) {
-  /* set up logging */
-  log_start("tileset.log");
+/**
+ * Parse the command line arguments.
+ *
+ * @param argc The number of arguments.
+ * @param argv The arguments.
+ * @param seed Pointer to seed to use for the game.
+ * @return -1 for help text, 0 on success, non-zero on failure.
+ */
+static int parse_args(const int argc, char *argv[], char **seed) {
+  static struct option long_options[] = {
+    {"help", no_argument, 0, 'h'},
+    {"seed", required_argument, 0, 's'},
+    {0, 0, 0, 0}
+  };
 
-  /* set up a tileset game state */
-  srand(time(NULL));
-  struct Game game;
-  reset_tileset(&game, 1);
+  const char *help_text = "TILESET: a word game\n"
+      "  -h, --help      Display this help and exit\n"
+      "  -s, --seed      Set the seed for the game.\n"
+      "                  The seed must be a 14-digit hex number.\n"
+      "\n"
+      "  The aim of the game is to find as many of the top-10 best scoring\n"
+      "  words as possible.\n";
 
-  /* start up the TUI */
-  tui_start();
+  /* parse arguments */
+  int c, opt_index;
+  int bad_option = 0;
+  *seed = NULL;
+  while ((c = getopt_long(argc, argv, "hs:", long_options, &opt_index)) != -1) {
+    switch (c) {
+      case 'h':
+        fprintf(stderr, "%s", help_text);
+        return -1;
+      case 's':
+        *seed = optarg;
+        break;
+      case '?':
+        bad_option = 1;
+        break;
+      default:
+        break;
+    }
+  }
 
-  /* create the game board */
-  struct UI ui;
-  if (ui_setup(&ui)) {
-    LOG("ERROR: failed to set up UI");
-    tui_end();
+  /* check for bad options */
+  if (bad_option) {
+    fprintf(stderr, "\n%s", help_text);
     return 1;
   }
 
-  // use an unimportant plane for key handling
-  tui_keypad(ui.win_input); // enable extra keyboard input (arrow keys etc.)
+  /* check for extra (invalid) arguments */
+  if (optind < argc) {
+    while (optind < argc) {
+      fprintf(stderr, "tileset: invalid extra argument: `%s'\n", argv[optind++]);
+    }
+    fprintf(stderr, "\n%s", help_text);
+    return 2;
+  }
 
+  return 0;
+}
+
+
+/**
+ * Receive user input in a loop.
+ *
+ * @param ui The user interface.
+ * @param game The game state.
+ */
+static void game_loop(struct UI *ui, struct Game *game) {
   /* render the screen before starting the game */
-  ui_render(&ui, &game);
+  ui_render(ui, game);
 
   /* game loop */
   while (1) {
-    const int key = wgetch(ui.win_input);
+    const int key = wgetch(ui->win_input);
     if (key == ERR) {
       continue;
     }
@@ -506,8 +554,8 @@ int main(int argc, char const *argv[]) {
     if (key == KEY_ESC) {
       /* escape key is special - it toggles between input modes */
       LOG("INFO: toggle escape mode");
-      ui.esc_mode = !ui.esc_mode;
-    } else if (ui.esc_mode) {
+      ui->esc_mode = !ui->esc_mode;
+    } else if (ui->esc_mode) {
       /* ESC MODE ON */
       if (key == 'q' || key == 'Q') {
         break;
@@ -516,16 +564,16 @@ int main(int argc, char const *argv[]) {
       switch (key) {
         case 'R':
         case 'r':
-          memset(ui.selected, 0, SIZE);
-          reset_tileset(&game, 1);
+          memset(ui->selected, 0, SIZE);
+          reset_tileset(game, NULL, 1);
           break;
         case 'S':
         case 's':
-          shuffle_tiles(&ui, &game);
+          shuffle_tiles(ui, game);
           break;
         case 'G':
         case 'g':
-          reveal_tileset(&game);
+          reveal_tileset(game);
           break;
         default:
           // do nothing if key is not valid
@@ -537,41 +585,77 @@ int main(int argc, char const *argv[]) {
       switch (key) {
         case '\n':
         case KEY_ENTER:
-          submit_word(&ui, &game);
+          submit_word(ui, game);
           break;
         case KEY_LEFT:
-          if (ui.input_index > 0) {
-            ui.input_index--;
+          if (ui->input_index > 0) {
+            ui->input_index--;
           }
           break;
         case KEY_RIGHT:
-          if (ui.input_index < SIZE - 1) {
-            ui.input_index++;
+          if (ui->input_index < SIZE - 1) {
+            ui->input_index++;
           }
           break;
         case KEY_DEL:
         case KEY_BACKSPACE:
-          delete_index(&ui, &game);
-          if (ui.input_index > 0) {
-            ui.input_index--;
+          delete_index(ui, game);
+          if (ui->input_index > 0) {
+            ui->input_index--;
           }
           break;
         default:
           if (key >= 'a' && key <= 'z') {
-            enter_letter(&ui, &game, key);
+            enter_letter(ui, game, (char) key);
           }
           break;
       }
     }
 
     /* render the screen */
-    ui_render(&ui, &game);
-    ui.has_submitted = 0; // reset submition flag
+    ui_render(ui, game);
+    ui->has_submitted = 0; // reset submition flag
   }
+}
+
+
+int main(const int argc, char **argv) {
+  /* set up logging */
+  log_start("tileset.log");
+
+  /* parse the command line arguments */
+  char *seed = NULL;
+  if (parse_args(argc, argv, &seed)) {
+    return EXIT_FAILURE;
+  }
+
+  /* set up a tileset game state */
+  srand((unsigned int) time(NULL));
+  struct Game game;
+  if (reset_tileset(&game, seed, 1)) {
+    fprintf(stderr, "tileset: bad seed `%s'\n", seed);
+    return EXIT_FAILURE;
+  }
+
+  /* start up the TUI */
+  tui_start();
+
+  /* create the game board */
+  struct UI ui;
+  if (ui_setup(&ui)) {
+    LOG("ERROR: failed to set up UI");
+    tui_end();
+    return EXIT_FAILURE;
+  }
+
+  // use an unimportant plane for key handling
+  tui_keypad(ui.win_input); // enable extra keyboard input (arrow keys etc.)
+
+  game_loop(&ui, &game);
 
   /* clean up resources */
   ui_destroy(&ui);
   tui_end();
 
-  return 0;
+  return EXIT_SUCCESS;
 }
