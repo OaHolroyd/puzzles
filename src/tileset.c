@@ -500,7 +500,7 @@ static int parse_args(const int argc, char *argv[], char **seed) {
   while ((c = getopt_long(argc, argv, "hs:", long_options, &opt_index)) != -1) {
     switch (c) {
       case 'h':
-        fprintf(stderr, help_text);
+        fprintf(stderr, "%s", help_text);
         return -1;
       case 's':
         *seed = optarg;
@@ -606,7 +606,7 @@ static void game_loop(struct UI *ui, struct Game *game) {
           break;
         default:
           if (key >= 'a' && key <= 'z') {
-            enter_letter(ui, game, key);
+            enter_letter(ui, game, (char) key);
           }
           break;
       }
@@ -630,7 +630,7 @@ int main(const int argc, char **argv) {
   }
 
   /* set up a tileset game state */
-  srand(time(NULL));
+  srand((unsigned int) time(NULL));
   struct Game game;
   if (reset_tileset(&game, seed, 1)) {
     fprintf(stderr, "tileset: bad seed `%s'\n", seed);

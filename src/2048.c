@@ -223,7 +223,7 @@ static void ui_render(const struct UI *ui, const struct Game *game) {
         // find length of label
         char text[CELL_WIDTH + 1];
         snprintf(text, CELL_WIDTH, "%d", 1 << value);
-        mvwprintw(cell, 1, (CELL_WIDTH - strlen(text)) / 2, text);
+        mvwprintw(cell, 1, (CELL_WIDTH - (int)strlen(text)) / 2, text);
       }
       wrefresh(cell);
     }
@@ -288,7 +288,7 @@ static int parse_args(const int argc, char *argv[]) {
   int bad_option = 0;while ((c = getopt_long(argc, argv, "hs:", long_options, &opt_index)) != -1) {
     switch (c) {
       case 'h':
-        fprintf(stderr, help_text);
+        fprintf(stderr, "%s", help_text);
       return -1;
       case '?':
         bad_option = 1;
@@ -326,7 +326,7 @@ int main(const int argc, char **argv) {
   }
 
   /* set up a 2048 game state */
-  srand(time(NULL));
+  srand((unsigned int)time(NULL));
   struct Game game;
   reset_2048(&game);
 

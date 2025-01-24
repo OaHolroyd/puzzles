@@ -91,7 +91,7 @@ int parse_seed(char *letters, const char *seed) {
       }
     }
 
-    letters[i] = value;
+    letters[i] = (char) value;
   }
 
   return 0;
@@ -187,7 +187,7 @@ static void depth_first_search(
           }
 
           /* replace it with this one if it is better (or the same and lower alphabetically) */
-          const char score = score_word_tileset(game, newPrefixBlank);
+          const int score = score_word_tileset(game, newPrefixBlank);
           if (
             score > worst_score ||
             (score == worst_score && strncmp(newPrefix, game->top_words[worst_index], SIZE) < 0)
@@ -268,7 +268,7 @@ int reset_tileset(struct Game *game, const char *seed, const int get_top_words) 
     }
   } else {
     /* pick random indices into the LETTERS array, not allowing replacement */
-    for (char i = 0; i < SIZE; i++) {
+    for (int i = 0; i < SIZE; i++) {
       int redraw;
       do {
         // get a random index
@@ -276,7 +276,7 @@ int reset_tileset(struct Game *game, const char *seed, const int get_top_words) 
 
         // check if the letter is already in the shuffle
         redraw = 0;
-        for (char j = 0; j < i; j++) {
+        for (int j = 0; j < i; j++) {
           if (game->letters[i] == game->letters[j]) {
             redraw = 1;
             break;
@@ -287,8 +287,8 @@ int reset_tileset(struct Game *game, const char *seed, const int get_top_words) 
   }
 
   /* convert indices into letters */
-  for (char i = 0; i < SIZE; i++) {
-    game->letters[i] = LETTERS[game->letters[i]];
+  for (int i = 0; i < SIZE; i++) {
+    game->letters[i] = LETTERS[(unsigned char) game->letters[i]];
   }
   game->letters[SIZE] = '\0'; // ensure the string is null-terminated
 
@@ -302,8 +302,8 @@ int reset_tileset(struct Game *game, const char *seed, const int get_top_words) 
 
 void shuffle_tileset(struct Game *game) {
   // Perform a Fisher-Yates shuffle
-  for (char i = 0; i < SIZE - 1; i++) {
-    const char j = i + rand() / (RAND_MAX / (SIZE - i) + 1);
+  for (int i = 0; i < SIZE - 1; i++) {
+    const int j = i + rand() / (RAND_MAX / (SIZE - i) + 1);
     const char tmp = game->letters[j];
     game->letters[j] = game->letters[i];
     game->letters[i] = tmp;
